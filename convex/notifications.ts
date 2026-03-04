@@ -100,7 +100,10 @@ export const enqueueNotificationEvent = mutation({
       v.literal("token_warning_threshold"),
       v.literal("token_free_tier_cap_reached"),
       v.literal("token_40k_warning"),
-      v.literal("token_50k_cap_reached")
+      v.literal("token_50k_cap_reached"),
+      v.literal("token_8k_warning"),
+      v.literal("token_10k_cap_reached"),
+      v.literal("webhook_processing_failed")
     ),
     payloadJson: v.optional(v.string())
   },

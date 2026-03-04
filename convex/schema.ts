@@ -466,7 +466,8 @@ export default defineSchema({
       v.literal("token_40k_warning"),
       v.literal("token_50k_cap_reached"),
       v.literal("token_8k_warning"),
-      v.literal("token_10k_cap_reached")
+      v.literal("token_10k_cap_reached"),
+      v.literal("webhook_processing_failed")
     ),
     status: v.union(
       v.literal("pending"),

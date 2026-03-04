@@ -19,7 +19,10 @@ type ClaimedNotification = {
     | "token_warning_threshold"
     | "token_free_tier_cap_reached"
     | "token_40k_warning"
-    | "token_50k_cap_reached";
+    | "token_50k_cap_reached"
+    | "token_8k_warning"
+    | "token_10k_cap_reached"
+    | "webhook_processing_failed";
   payloadJson: string;
   recipientEmail: string;
   recipientName?: string;
@@ -63,10 +66,12 @@ function buildMessage(event: ClaimedNotification) {
   const hardCap = asNumberOrDefault(payload.includedTokens, DEFAULT_HARD_CAP);
   const projectedUsage = payload.projectedUsage ?? "n/a";
 
-  if (
+  const isWarningEvent =
     event.eventType === "token_warning_threshold" ||
-    event.eventType === "token_40k_warning"
-  ) {
+    event.eventType === "token_40k_warning" ||
+    event.eventType === "token_8k_warning";
+
+  if (isWarningEvent) {
     return {
       subject: `Usage warning: ${warningThreshold.toLocaleString("en-US")} token threshold reached`,
       text: [
@@ -77,6 +82,33 @@ function buildMessage(event: ClaimedNotification) {
         `Projected usage: ${projectedUsage}`,
         "",
         `Please review usage to avoid free-tier interruption at ${hardCap.toLocaleString("en-US")} tokens.`,
+        ""
+      ].join("\n")
+    };
+  }
+
+  if (event.eventType === "webhook_processing_failed") {
+    const route = typeof payload.route === "string" ? payload.route : "unknown";
+    const platform =
+      typeof payload.platform === "string" ? payload.platform : "unknown";
+    const statusCode =
+      typeof payload.statusCode === "number" ? payload.statusCode : "n/a";
+    const errorMessage =
+      typeof payload.error === "string" ? payload.error : "No error message provided";
+
+    return {
+      subject: "Action required: webhook processing failure detected",
+      text: [
+        `Hi ${event.recipientName ?? "there"},`,
+        "",
+        "A webhook processing failure was detected for your account.",
+        `Month: ${event.monthKey}`,
+        `Platform: ${platform}`,
+        `Route: ${route}`,
+        `Status: ${statusCode}`,
+        `Error: ${errorMessage}`,
+        "",
+        "Review incident triage guidance: docs/ops/incident-triage-escalation-flow.md",
         ""
       ].join("\n")
     };
