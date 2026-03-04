@@ -1,0 +1,37 @@
+{
+  "name": "@copilot/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3100",
+    "build": "next build",
+    "start": "next start --port 3100",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:inbox": "vitest run tests/inbox.actions.integration.test.ts tests/reviews.cleanup.integration.test.ts tests/audit-retention.integration.test.ts tests/drafts.routing.integration.test.ts tests/temporal.start.integration.test.ts tests/comment-workflow.integration.test.ts tests/context.build.integration.test.ts tests/orchestration-mode.integration.test.ts tests/orchestration.health.integration.test.ts tests/orchestration-runtime.integration.test.ts",
+    "test:oauth": "vitest run tests/oauth.integration.test.ts",
+    "test:oauth:ci": "mkdir -p test-results && vitest run tests/oauth.integration.test.ts --reporter=default --reporter=junit --outputFile.junit=./test-results/oauth.junit.xml",
+    "test:telemetry": "vitest run tests/inbox-send-telemetry-report.integration.test.ts",
+    "test:webhooks:e2e": "vitest run tests/webhooks.e2e.integration.test.ts",
+    "test:webhooks:e2e:ci": "mkdir -p test-results && vitest run tests/webhooks.e2e.integration.test.ts --reporter=default --reporter=junit --outputFile.junit=./test-results/webhooks.e2e.junit.xml"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^6.14.1",
+    "@temporalio/client": "^1.11.7",
+    "convex": "^1.17.4",
+    "next": "15.1.7",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "stripe": "^17.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "eslint": "^9.21.0",
+    "eslint-config-next": "15.1.7",
+    "vitest": "^4.0.18"
+  }
+}

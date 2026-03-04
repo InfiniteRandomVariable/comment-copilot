@@ -1,0 +1,43 @@
+{
+  "name": "comment-copilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone AI comment copilot for TikTok and Instagram creators",
+  "packageManager": "pnpm@9.15.4",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "pnpm sync:web:env && pnpm --filter @copilot/web dev",
+    "dev:worker": "pnpm --filter @copilot/worker dev",
+    "dev:notifications": "pnpm --filter @copilot/worker dev:notifications",
+    "dev:convex": "convex dev",
+    "build:web": "pnpm --filter @copilot/web build",
+    "typecheck": "pnpm -r typecheck",
+    "test:web:inbox": "pnpm --filter @copilot/web test:inbox",
+    "test:web:oauth": "pnpm --filter @copilot/web test:oauth",
+    "test:web:oauth:ci": "pnpm --filter @copilot/web test:oauth:ci",
+    "test:web:telemetry": "pnpm --filter @copilot/web test:telemetry",
+    "test:web:webhooks:e2e": "pnpm --filter @copilot/web test:webhooks:e2e",
+    "test:web:webhooks:e2e:ci": "pnpm --filter @copilot/web test:webhooks:e2e:ci",
+    "sync:web:oauth:quality-gate": "pnpm test:web:oauth:ci && node scripts/update-oauth-quality-gate.mjs apps/web/test-results/oauth.junit.xml apps/web/tests/oauth-quality-gate.json",
+    "sync:web:webhooks:e2e:quality-gate": "pnpm test:web:webhooks:e2e:ci && node scripts/update-oauth-quality-gate.mjs apps/web/test-results/webhooks.e2e.junit.xml apps/web/tests/webhooks-e2e-quality-gate.json",
+    "report:web:oauth:junit": "node scripts/report-oauth-junit.mjs apps/web/test-results/oauth.junit.xml",
+    "report:web:inbox-send:telemetry": "node scripts/report-inbox-send-telemetry.mjs",
+    "report:web:webhooks:e2e:junit": "node scripts/report-oauth-junit.mjs apps/web/test-results/webhooks.e2e.junit.xml",
+    "verify:web:oauth:junit": "node scripts/verify-oauth-junit.mjs apps/web/test-results/oauth.junit.xml --config apps/web/tests/oauth-quality-gate.json",
+    "verify:web:webhooks:e2e:junit": "node scripts/verify-oauth-junit.mjs apps/web/test-results/webhooks.e2e.junit.xml --config apps/web/tests/webhooks-e2e-quality-gate.json",
+    "verify:phase-boundary": "node scripts/verify-phase-boundary.mjs",
+    "ci:check": "pnpm verify:phase-boundary && pnpm typecheck && pnpm test:web:inbox && pnpm test:web:oauth:ci && pnpm verify:web:oauth:junit && pnpm test:web:webhooks:e2e:ci && pnpm verify:web:webhooks:e2e:junit && pnpm test:web:telemetry && pnpm check:isolation",
+    "lint": "pnpm -r lint",
+    "check:isolation": "./scripts/check-isolation.sh",
+    "smoke:stripe:webhook": "./scripts/smoke-stripe-webhook.sh",
+    "smoke:tiktok:webhook": "./scripts/smoke-tiktok-webhook.sh",
+    "sync:web:env": "node scripts/sync-web-env.mjs"
+  },
+  "devDependencies": {
+    "convex": "^1.17.4",
+    "typescript": "^5.8.2"
+  }
+}

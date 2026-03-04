@@ -1,0 +1,52 @@
+# Implementation Status
+
+## Implemented
+
+- Standalone project scaffold under `comment-copilot/`.
+- Convex schema for accounts, comments, replies, approvals, persona, skill versions, and audit entities.
+- Persona profile mutations and queries.
+- `SKILL.md` compiler with required section structure.
+- Skill version lifecycle: draft, approve (activate), reject.
+- Raw-signal skill generation from post titles and past interactions.
+- Webhook ingestion routes for Instagram and TikTok comments.
+- Duplicate webhook deliveries now skip workflow restarts when comment ingest is not newly created.
+- Temporal workflow start now uses deterministic per-comment workflow IDs and treats already-started executions as idempotent success.
+- Instagram and TikTok webhook signature verification with HMAC checks.
+- Real OAuth code exchange callback for Instagram and TikTok.
+- OAuth token refresh endpoint for Instagram and TikTok.
+- OAuth disconnect endpoint and Settings UI action to remove platform access.
+- OAuth refresh/disconnect endpoints now enforce authenticated owner access.
+- TikTok disconnect attempts provider-side token revoke before local credential removal.
+- Instagram disconnect now returns explicit API limitation details (Instagram Basic Display has no token revocation endpoint).
+- Temporal workflow trigger from webhook ingestion.
+- Webhook workflow orchestration mode is env-selectable: `temporal` (default) or `inline` (runs workflow stages in-process, with per-comment in-flight dedupe).
+- Settings page now displays the active orchestration runtime mode and raw env value for quick ops verification, including invalid-value fallback warnings.
+- Added `GET /api/health/orchestration` endpoint for runtime mode/source diagnostics without opening UI.
+- Orchestration health endpoint now also reports `workerRequired`, resolved Temporal config, default-flag indicators, and warnings.
+- Orchestration mode/state resolution is centralized in a shared runtime helper used by settings UI, health endpoint, and startup logging.
+- Added `pnpm sync:web:env` utility to copy root `.env.local` into `apps/web/.env.local` to avoid Next.js env drift in local dev.
+- `pnpm dev:web` now auto-runs `pnpm sync:web:env` before starting Next.js.
+- Worker workflow with 3-stage agent pipeline.
+- Real LLM provider integration in `generateDraft` activity with retry/backoff controls.
+- Real moderation provider integration in `runSafetyGate` activity with retry/backoff controls.
+- Active draft routing now applies autopilot thresholds to auto-send low-risk/high-confidence candidates and queue others for review.
+- Draft routing is idempotent per comment and reuses existing candidate/task instead of creating duplicates on retries.
+- Legacy `replies:*` API path has been removed; active path is `drafts:*` + `reviews:*`.
+- Platform posting integration for send actions (Instagram/TikTok provider API call before marking sent).
+- Send actions now enforce candidate status guards before provider call (`pending_review`/`send_failed`/`approved` allowed), treat already-sent statuses as idempotent no-op success, and reject disallowed statuses like `rejected`.
+- Send idempotency guard via platform send receipts (candidate + reply text hash), whitespace-normalized `repliesSent` fallback lookup/upserts, fallback `repliesSent` persistence when receipt-write fails, audit logging for receipt-write failures, and structured `inbox_send.*` telemetry events for dedupe/fallback observability.
+- After send/reject resolution, message/comment-scoped Convex data is cleaned up while minimal audit metadata remains.
+- Scheduled audit log retention purge keeps audit records for 4 calendar months.
+- Free-tier token enforcement with reservation/finalize accounting.
+- Notification event queue for 8k warning and 10k cap signals.
+- Notification sender worker with queue claim/mark and retry flow.
+- Stripe webhook signature verification + lifecycle event mapping with idempotent event tracking.
+- OAuth route integration tests with CI JUnit reporting, quality gate, and GitHub summary annotations.
+- Inbox send action integration tests covering idempotent receipt reuse/creation, status-guard behaviors (already-sent no-op + rejected block), send-failed fallback, and retry idempotency across approve + edited-send finalization failures.
+- Workflow orchestration tests validate stage logging for success, generation failure, and safety failure paths.
+- Context-builder tests verify only active style skill versions are used at runtime (draft/unapproved style versions are ignored).
+- Dedicated cleanup coverage for `reviews.cleanupResolvedMessageData` verifies scoped deletion + token usage/reservation comment link redaction semantics.
+- Inbox send telemetry parser integration tests for log-to-metrics reporting contract.
+- Webhooks end-to-end integration tests (signature validation -> Convex ingestion -> Temporal workflow trigger) with CI JUnit gating.
+- Isolation guard script and operational isolation checklist.
+- CI workflow with a unified `ci:check` gate (typecheck + inbox integration + OAuth/webhooks/telemetry suites) and OAuth + webhooks E2E JUnit artifact upload.

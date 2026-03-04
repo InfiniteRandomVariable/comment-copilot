@@ -1,0 +1,10 @@
+node_modules
+.next
+.env
+.env.local
+.convex
+pnpm-lock.yaml
+dist
+coverage
+apps/web/test-results
+.DS_Store
