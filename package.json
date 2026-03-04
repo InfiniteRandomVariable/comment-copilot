@@ -35,7 +35,8 @@
     "smoke:stripe:webhook": "./scripts/smoke-stripe-webhook.sh",
     "smoke:tiktok:webhook": "./scripts/smoke-tiktok-webhook.sh",
     "sync:web:env": "node scripts/sync-web-env.mjs",
-    "verify:deploy:checklist": "./scripts/verify-deploy-checklist.sh"
+    "verify:deploy:checklist": "./scripts/verify-deploy-checklist.sh",
+    "rehearse:deploy:rollback": "./scripts/rehearse-deploy-rollback.sh"
   },
   "devDependencies": {
     "convex": "^1.17.4",

@@ -74,6 +74,11 @@ Trigger rollback if smoke checks fail, error rates spike, or critical workflows 
 2. Roll back notification worker to last known good build/version.
 3. If deploy included Convex schema/function changes, roll forward with a compatibility fix rather than destructive schema rollback.
 4. Re-run smoke checks and capture outputs.
+5. Rehearse rollback procedure in non-production using the automated runner:
+
+```bash
+ARTIFACT_DIR=/tmp/<deploy-rehearsal-artifacts> APP_URL=http://<app-url> pnpm rehearse:deploy:rollback
+```
 
 ## Post-Deploy Monitoring Window
 
@@ -93,4 +98,5 @@ Capture and link:
 - smoke outputs
 - rollback rehearsal notes/results
 - consolidated verification artifact directory
+- automated rollback rehearsal artifact directory
 - incident/escalation notes if triggered
