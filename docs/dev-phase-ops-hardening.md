@@ -116,6 +116,7 @@ Stage 1 exits only when all are true:
 - `docs/ops/provider-outage-runbook.md`
 - `docs/ops/token-billing-incident-runbook.md`
 - `docs/ops/production-deploy-checklist.md`
+- `docs/ops/observability-baseline-verification.md`
 - Observability integration/config docs (provider-specific) and verification notes.
 
 ## Status Tracker
