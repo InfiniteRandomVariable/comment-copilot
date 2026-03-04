@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConvexServerClient } from "../../../_lib/convexServer";
+import { reportErrorTrackingEvent } from "../../../_lib/errorTracking";
+import {
+  createWebhookObservabilityContext,
+  logWebhookCompleted,
+  logWebhookFailed
+} from "../../../_lib/webhookObservability";
 import { startCommentWorkflow } from "../../../_lib/temporal";
 import { verifyInstagramWebhookSignature } from "../../../_lib/webhookSignatures";
 
@@ -33,6 +39,13 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const observability = createWebhookObservabilityContext({
+    provider: "instagram",
+    route: "/api/webhooks/instagram/comments",
+    method: "POST"
+  });
+  let accountId: string | undefined;
+
   try {
     const rawBody = await request.text();
     const verification = verifyInstagramWebhookSignature({
@@ -43,6 +56,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (!verification.ok) {
+      logWebhookFailed(observability, {
+        statusCode: verification.status,
+        errorCode: "instagram_signature_verification_failed",
+        errorMessage: verification.error
+      });
       return NextResponse.json(
         { ok: false, error: verification.error },
         { status: verification.status }
@@ -61,6 +79,7 @@ export async function POST(request: NextRequest) {
       commenterLatestVideoId?: string;
       commenterLatestVideoTitle?: string;
     };
+    accountId = body.accountId;
     const client = getConvexServerClient();
 
     const ingestion = (await client.mutation(
@@ -80,16 +99,37 @@ export async function POST(request: NextRequest) {
       } as never
     )) as { commentId: string; created?: boolean };
 
-    if (ingestion.created ?? true) {
+    const workflowStarted = ingestion.created ?? true;
+    if (workflowStarted) {
       await startCommentWorkflow({
         accountId: body.accountId,
         commentId: ingestion.commentId
       });
     }
 
+    logWebhookCompleted(observability, {
+      accountId: body.accountId,
+      workflowStarted
+    });
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    logWebhookFailed(observability, {
+      statusCode: 500,
+      errorCode: "instagram_webhook_processing_failed",
+      errorMessage: message,
+      accountId
+    });
+    await reportErrorTrackingEvent({
+      source: "webhook:instagram_comments",
+      category: "webhook_processing_failed",
+      message,
+      metadata: {
+        route: "/api/webhooks/instagram/comments",
+        accountId,
+        statusCode: 500
+      }
+    });
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
