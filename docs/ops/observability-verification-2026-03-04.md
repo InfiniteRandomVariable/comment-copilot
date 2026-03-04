@@ -40,6 +40,11 @@ APP_URL=http://localhost:3100 VERIFY_CONVEX=0 ./scripts/smoke-tiktok-webhook.sh
 
 - verified ingest endpoint received JSON error event payload
 
+### 4) Automated regression coverage
+
+- `pnpm --filter @copilot/web test:webhooks:e2e`
+- assertion coverage includes: external error-tracking event dispatch from TikTok webhook failure path
+
 ## Results
 
 ### 1) Latency visibility
@@ -77,6 +82,12 @@ From `/tmp/stage1_item2_error_tracking_webhook_20260304/`:
   - route + account metadata and timestamp
 
 This verifies error events are exported to an external sink when configured.
+
+### 4) Automated regression coverage
+
+- `tests/webhooks.e2e.integration.test.ts` passed with 7/7 tests.
+- includes case: `"reports tiktok processing failures to external error tracking webhook"`
+- validates payload fields (`source`, `category`, `message`, `metadata.route`, `metadata.accountId`, `metadata.statusCode`).
 
 ## Artifact Paths
 

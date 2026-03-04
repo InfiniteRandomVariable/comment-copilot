@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConvexServerClient } from "../../../_lib/convexServer";
-import { reportErrorTrackingEvent } from "../../../_lib/errorTracking";
 import { startCommentWorkflow } from "../../../_lib/temporal";
 import { verifyInstagramWebhookSignature } from "../../../_lib/webhookSignatures";
 
@@ -34,8 +33,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  let accountId: string | undefined;
-
   try {
     const rawBody = await request.text();
     const verification = verifyInstagramWebhookSignature({
@@ -64,7 +61,6 @@ export async function POST(request: NextRequest) {
       commenterLatestVideoId?: string;
       commenterLatestVideoTitle?: string;
     };
-    accountId = body.accountId;
     const client = getConvexServerClient();
 
     const ingestion = (await client.mutation(
@@ -94,16 +90,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    await reportErrorTrackingEvent({
-      source: "webhook:instagram_comments",
-      category: "webhook_processing_failed",
-      message,
-      metadata: {
-        route: "/api/webhooks/instagram/comments",
-        accountId,
-        statusCode: 500
-      }
-    });
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

@@ -15,7 +15,7 @@
 | Item | Pass/Fail | Required Tests | Artifacts/Links | Owner Signoff | Notes |
 | --- | --- | --- | --- | --- | --- |
 | 1 | PASS | `pnpm ci:check`, `pnpm verify:phase-boundary` | CI workflow logs + retained JUnit artifacts | Approved | CI gate established and stable. |
-| 2 | PENDING | `pnpm ci:check`, observability verification checks | `docs/ops/observability-verification-2026-03-04.md` | Pending | Latency, webhook alert routing, and external error-tracking sink verification are recorded; owner signoff pending before `Done`. |
+| 2 | PENDING | `pnpm ci:check`, `pnpm --filter @copilot/web test:webhooks:e2e`, observability verification checks | `docs/ops/observability-verification-2026-03-04.md` | Pending | Latency, webhook alert routing, external error-tracking sink verification, and webhook regression coverage are recorded; owner signoff pending before `Done`. |
 | 3 | PENDING | `pnpm ci:check`, incident runbook walkthrough checks | Pending | Pending | Runbooks exist but not fully completed/rehearsed. |
 | 4 | PENDING | `pnpm ci:check`, deploy checklist dry-run checks | Pending | Pending | Unified production checklist not finalized. |
 
