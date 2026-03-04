@@ -10,6 +10,10 @@ const DELIVERY_MODE = (process.env.NOTIFICATION_DELIVERY_MODE ?? "log").toLowerC
 const SES_REGION = process.env.SES_REGION;
 const SES_FROM_EMAIL =
   process.env.SES_FROM_EMAIL ?? process.env.NOTIFICATION_FROM_EMAIL;
+const ERROR_TRACKING_WEBHOOK_URL =
+  process.env.ERROR_TRACKING_WEBHOOK_URL?.trim() || undefined;
+const ERROR_TRACKING_WEBHOOK_TOKEN =
+  process.env.ERROR_TRACKING_WEBHOOK_TOKEN?.trim() || undefined;
 
 type ClaimedNotification = {
   notificationId: string;
@@ -47,6 +51,44 @@ function getSesClient() {
   }
 
   return sesClient;
+}
+
+async function reportErrorTrackingEvent(args: {
+  source: string;
+  category: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+}) {
+  if (!ERROR_TRACKING_WEBHOOK_URL) return;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 1500);
+
+  try {
+    await fetch(ERROR_TRACKING_WEBHOOK_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(ERROR_TRACKING_WEBHOOK_TOKEN
+          ? { authorization: `Bearer ${ERROR_TRACKING_WEBHOOK_TOKEN}` }
+          : {})
+      },
+      body: JSON.stringify({
+        source: args.source,
+        category: args.category,
+        message: args.message.slice(0, 1000),
+        metadata: args.metadata ?? {},
+        capturedAt: new Date().toISOString(),
+        environment: process.env.NODE_ENV ?? "unknown"
+      }),
+      signal: controller.signal
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : `${error}`;
+    console.error(`[error-tracking] failed to report worker event: ${message}`);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function asNumberOrDefault(value: unknown, fallback: number) {
@@ -226,12 +268,29 @@ async function runNotificationWorker() {
           } as never
         );
 
+        await reportErrorTrackingEvent({
+          source: "worker:notifications",
+          category: "notification_send_failed",
+          message,
+          metadata: {
+            retry,
+            notificationId: claimed.notificationId,
+            eventType: claimed.eventType,
+            recipientEmail: claimed.recipientEmail
+          }
+        });
+
         console.error(
           `[notification] failed (${retry ? "retry" : "no-retry"}): ${message}`
         );
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : `${error}`;
+      await reportErrorTrackingEvent({
+        source: "worker:notifications",
+        category: "notification_loop_error",
+        message
+      });
       console.error(`[notification] loop error: ${message}`);
       await sleep(POLL_MS);
     }

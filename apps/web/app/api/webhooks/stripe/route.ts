@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConvexServerClient } from "../../_lib/convexServer";
+import { reportErrorTrackingEvent } from "../../_lib/errorTracking";
 import Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -152,6 +153,15 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    await reportErrorTrackingEvent({
+      source: "webhook:stripe",
+      category: "webhook_processing_failed",
+      message,
+      metadata: {
+        route: "/api/webhooks/stripe",
+        statusCode: 500
+      }
+    });
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

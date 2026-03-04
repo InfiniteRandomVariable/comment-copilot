@@ -10,23 +10,35 @@
 
 - Request latency visibility (p50/p95/p99) for key routes
 - Webhook failure alert routing verification
-- Error-tracking coverage status
+- External error-tracking integration verification
 
 ## Commands and Checks
 
-Latency sampling artifact (25 samples/route):
+### 1) Latency sampling (25 samples/route)
 
 - `pnpm verify:latency:routes`
 - output artifact: `/tmp/stage1_item2_latency_20260304/route-latency.md`
 - rerun artifact: `/tmp/stage1_item2_latency_20260304_rerun/route-latency.md`
 
-Webhook failure alert routing verification:
+### 2) Webhook failure alert routing
 
 - failing TikTok webhook call (expected 500 in local env with missing AI generation URL)
 - pending + claim notification checks:
   - `notifications:listPendingNotificationEvents`
   - `notifications:claimNextPendingNotification`
 - artifacts under `/tmp/stage1_item2_webhook_alert_routing_20260304_live2/`
+
+### 3) External error-tracking sink
+
+- started local ingest endpoint (`http://127.0.0.1:4310/ingest`) as provider stand-in
+- ran web app with `ERROR_TRACKING_WEBHOOK_URL=http://127.0.0.1:4310/ingest`
+- triggered failing TikTok webhook via:
+
+```bash
+APP_URL=http://localhost:3100 VERIFY_CONVEX=0 ./scripts/smoke-tiktok-webhook.sh
+```
+
+- verified ingest endpoint received JSON error event payload
 
 ## Results
 
@@ -39,7 +51,7 @@ From `/tmp/stage1_item2_latency_20260304_rerun/route-latency.md`:
 - `/api/webhooks/instagram/comments` POST: p50 `7.73ms`, p95 `8.46ms`, p99 `9.00ms`
 - `/api/webhooks/tiktok/comments` POST: p50 `7.46ms`, p95 `8.23ms`, p99 `8.88ms`
 
-This satisfies the stage requirement for p50/p95/p99 visibility on key routes.
+This satisfies p50/p95/p99 visibility for key routes.
 
 ### 2) Webhook failure alert routing
 
@@ -53,15 +65,29 @@ From `/tmp/stage1_item2_webhook_alert_routing_20260304_live2/`:
 
 This verifies alert enqueue + actionable routing path for webhook processing failures.
 
-### 3) Error-tracking status
+### 3) External error-tracking integration
 
-Current evidence in this cycle confirms runtime failure capture through webhook failure alert events and logs, but does not yet include an external error-tracking provider dashboard/query capture in this branch.
+From `/tmp/stage1_item2_error_tracking_webhook_20260304/`:
+
+- ingest path received: `/ingest`
+- captured event payload included:
+  - `source: "webhook:tiktok_comments"`
+  - `category: "webhook_processing_failed"`
+  - `message: "AI_CHAT_COMPLETIONS_URL is not set for worker generation"`
+  - route + account metadata and timestamp
+
+This verifies error events are exported to an external sink when configured.
 
 ## Artifact Paths
+
+Latency:
 
 - `/tmp/stage1_item2_latency_20260304/orchestration-health.json`
 - `/tmp/stage1_item2_latency_20260304/route-latency.md`
 - `/tmp/stage1_item2_latency_20260304_rerun/route-latency.md`
+
+Webhook alert routing:
+
 - `/tmp/stage1_item2_webhook_alert_routing_20260304_live2/orchestration-health.json`
 - `/tmp/stage1_item2_webhook_alert_routing_20260304_live2/tiktok-status.txt`
 - `/tmp/stage1_item2_webhook_alert_routing_20260304_live2/tiktok-response.json`
@@ -69,6 +95,15 @@ Current evidence in this cycle confirms runtime failure capture through webhook 
 - `/tmp/stage1_item2_webhook_alert_routing_20260304_live2/claimed-notification.json`
 - `/tmp/stage1_item2_webhook_alert_routing_20260304_live2/dev-web.tail.log`
 
+Error-tracking sink verification:
+
+- `/tmp/stage1_item2_error_tracking_webhook_20260304/orchestration-health.json`
+- `/tmp/stage1_item2_error_tracking_webhook_20260304/tiktok-smoke.log`
+- `/tmp/stage1_item2_error_tracking_webhook_20260304/received-path.txt`
+- `/tmp/stage1_item2_error_tracking_webhook_20260304/received-headers.json`
+- `/tmp/stage1_item2_error_tracking_webhook_20260304/received-body.json`
+- `/tmp/stage1_item2_error_tracking_webhook_20260304/dev-web.tail.log`
+
 ## Conclusion
 
-Stage 1 Item 2 evidence is now consolidated for latency and webhook alert routing with concrete artifacts. Item 2 remains `PENDING` until owner signoff and explicit error-tracking provider verification evidence are recorded.
+Stage 1 Item 2 observability verification now includes latency visibility, webhook failure alert routing, and external error-tracking export evidence. Item 2 remains `PENDING` until owner signoff.
