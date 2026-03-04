@@ -107,7 +107,7 @@ Stage 2 exits only when all are true:
 
 ## Status Tracker
 
-- Stage Status: Pending
+- Stage Status: In Progress
 - Item 1 (operator UX): Pending | Tests Passed: No | Evidence Linked: No | Owner Signoff: No
 - Item 2 (inbox productivity): Pending | Tests Passed: No | Evidence Linked: No | Owner Signoff: No
 - Item 3 (usage dashboards): Pending | Tests Passed: No | Evidence Linked: No | Owner Signoff: No

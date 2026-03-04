@@ -19,9 +19,9 @@ Only one stage may be active at a time.
 
 ## Active Stage
 
-ACTIVE_STAGE_ID=stage-1
-ACTIVE_BOUNDARY_DOC=docs/dev-phase-ops-hardening.md
-ACTIVE_EVIDENCE_DOC=docs/ops/stage-1-evidence.md
+ACTIVE_STAGE_ID=stage-2
+ACTIVE_BOUNDARY_DOC=docs/dev-phase-stage-2-beta-readiness.md
+ACTIVE_EVIDENCE_DOC=docs/ops/stage-2-evidence.md
 STAGE_SEQUENCE=stage-1,stage-2,stage-3,stage-4
 LAST_UPDATED=2026-03-04
 

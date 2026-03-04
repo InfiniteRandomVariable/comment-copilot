@@ -4,9 +4,9 @@
 
 - Stage ID: stage-2
 - Boundary Doc: docs/dev-phase-stage-2-beta-readiness.md
-- Stage Status: Pending
+- Stage Status: In Progress
 - Exit Gate Approved: No
-- Owner: TBD
+- Owner: Kevin Lau
 - Overall Signoff: Pending
 - Last Updated: 2026-03-04
 
