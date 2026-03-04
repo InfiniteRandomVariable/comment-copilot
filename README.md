@@ -48,6 +48,8 @@ This project is intentionally isolated:
 - Provider outage runbook: `docs/ops/provider-outage-runbook.md`
 - Token and billing incident runbook: `docs/ops/token-billing-incident-runbook.md`
 - Incident triage and escalation flow: `docs/ops/incident-triage-escalation-flow.md`
+- Production deploy checklist: `docs/ops/production-deploy-checklist.md`
+- Deploy checklist dry-run evidence (2026-03-04): `docs/ops/deploy-checklist-dry-run-2026-03-04.md`
 
 ## Testing
 
