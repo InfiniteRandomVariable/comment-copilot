@@ -8,9 +8,6 @@ on:
 jobs:
   phase-boundary-check:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: comment-copilot
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,7 +20,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: comment-copilot/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
@@ -34,9 +31,6 @@ jobs:
   validate:
     needs: [phase-boundary-check]
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: comment-copilot
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,7 +43,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: comment-copilot/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
@@ -66,7 +60,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: oauth-vitest-junit
-          path: comment-copilot/apps/web/test-results/oauth.junit.xml
+          path: apps/web/test-results/oauth.junit.xml
           if-no-files-found: warn
 
       - name: Upload Webhooks E2E Test Report
@@ -74,5 +68,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: webhooks-e2e-vitest-junit
-          path: comment-copilot/apps/web/test-results/webhooks.e2e.junit.xml
+          path: apps/web/test-results/webhooks.e2e.junit.xml
           if-no-files-found: warn

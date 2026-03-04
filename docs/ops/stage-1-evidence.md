@@ -14,7 +14,7 @@
 
 | Item | Pass/Fail | Required Tests | Artifacts/Links | Owner Signoff | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 1 | PASS | `pnpm ci:check`, `pnpm verify:phase-boundary` | CI workflow logs + retained JUnit artifacts | Approved | CI gate uses `packageManager`-pinned pnpm in workflows to avoid action setup version conflicts. |
+| 1 | PASS | `pnpm ci:check`, `pnpm verify:phase-boundary` | CI workflow logs + retained JUnit artifacts | Approved | CI workflows now rely on `packageManager` pnpm pin and repo-root lockfile/paths so gate jobs run from the correct workspace root. |
 | 2 | PENDING | `pnpm ci:check`, observability verification checks | Pending | Pending | Error tracking/latency/alerts partially implemented. |
 | 3 | PENDING | `pnpm ci:check`, incident runbook walkthrough checks | Pending | Pending | Runbooks exist but not fully completed/rehearsed. |
 | 4 | PENDING | `pnpm ci:check`, deploy checklist dry-run checks | Pending | Pending | Unified production checklist not finalized. |

@@ -20,12 +20,10 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: comment-copilot/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        working-directory: comment-copilot
         run: pnpm install --frozen-lockfile=false
 
       - name: Run isolation guard
-        working-directory: comment-copilot
         run: pnpm check:isolation
