@@ -34,6 +34,16 @@ LAST_UPDATED=2026-03-04
   - all scope items set to `Done` with tests/evidence/signoff marked `Yes`,
   - matching stage evidence doc exit-gate approval and overall signoff.
 
+## Execution Continuity
+
+- Work continuously until the task is complete.
+- Do not stop to give progress updates or ask for confirmation unless one of the following is true:
+  1. A destructive or irreversible action is needed.
+  2. Credentials or secrets are required.
+  3. There is a genuine architectural fork with materially different tradeoffs.
+  4. You are blocked by missing information.
+- Otherwise, make reasonable decisions and continue.
+
 ## Baseline Mandatory Tests (All Stages)
 
 - `pnpm ci:check`

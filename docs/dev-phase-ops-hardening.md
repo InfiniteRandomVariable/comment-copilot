@@ -41,6 +41,7 @@ All autonomous coding-agent work must stay within this boundary.
 - Work only on Stage 1 scope items.
 - Any request outside this phase must be rejected/deferred and logged under "Deferred Work".
 - No task outside Stage 1 is allowed until all mandatory Stage 1 tests pass and evidence is recorded.
+- Follow the global Execution Continuity rule in `docs/dev-phase-policy.md`.
 - Ship in small, reviewable PR-sized increments.
 - Every increment must include:
   - docs updates,
