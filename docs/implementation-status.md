@@ -44,6 +44,7 @@
 - Stripe webhook signature verification + lifecycle event mapping with idempotent event tracking.
 - OAuth route integration tests with CI JUnit reporting, quality gate, and GitHub summary annotations.
 - Inbox send action integration tests covering idempotent receipt reuse/creation, status-guard behaviors (already-sent no-op + rejected block), send-failed fallback, and retry idempotency across approve + edited-send finalization failures.
+- Inbox review queue now supports high-volume operator filtering (platform, intent, text search), queue split summaries, and preserves filter state across send/reject actions and pagination.
 - Workflow orchestration tests validate stage logging for success, generation failure, and safety failure paths.
 - Context-builder tests verify only active style skill versions are used at runtime (draft/unapproved style versions are ignored).
 - Dedicated cleanup coverage for `reviews.cleanupResolvedMessageData` verifies scoped deletion + token usage/reservation comment link redaction semantics.

@@ -63,6 +63,11 @@ import {
   rejectCandidateAction,
   sendCandidateAction
 } from "../app/inbox/actions";
+import {
+  filterInboxItems,
+  normalizeInboxFilters,
+  summarizeInboxQueue
+} from "../app/inbox/filtering";
 
 const consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
 const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -938,5 +943,90 @@ describe("Inbox Send Candidate Action idempotency", () => {
     const redirectUrl = parseRedirectUrl(hoisted.lastRedirectUrl);
     assert.equal(redirectUrl.searchParams.get("result"), "rejected");
     assert.equal(redirectUrl.searchParams.get("error"), null);
+  });
+});
+
+
+describe("Inbox filtering helpers", () => {
+  const sampleItems = [
+    {
+      candidate: {
+        text: "Thanks for asking about shipping windows",
+        intentLabel: "question",
+        messageId: "msg_1"
+      },
+      comment: {
+        text: "When will this ship?",
+        platform: "instagram" as const,
+        platformCommentId: "ig_comment_1",
+        commenterUsername: "alice"
+      }
+    },
+    {
+      candidate: {
+        text: "Appreciate your support",
+        intentLabel: "praise",
+        messageId: "msg_2"
+      },
+      comment: {
+        text: "Love this drop",
+        platform: "tiktok" as const,
+        platformCommentId: "tt_comment_2",
+        commenterUsername: "bob"
+      }
+    },
+    {
+      candidate: {
+        text: "Could this fit my setup?",
+        intentLabel: "question",
+        messageId: "msg_3"
+      },
+      comment: {
+        text: "Need sizing help",
+        platform: "instagram" as const,
+        platformCommentId: "ig_comment_3",
+        commenterUsername: "charlie"
+      }
+    }
+  ];
+
+  it("normalizes unsupported filter values to safe defaults", () => {
+    const filters = normalizeInboxFilters({
+      platform: "youtube",
+      intent: "random",
+      q: "  shipping  "
+    });
+
+    assert.deepEqual(filters, {
+      platform: "all",
+      intent: "all",
+      q: "shipping"
+    });
+  });
+
+  it("filters by platform, intent, and search query", () => {
+    const filters = normalizeInboxFilters({
+      platform: "instagram",
+      intent: "question",
+      q: "shipping"
+    });
+
+    const filtered = filterInboxItems(sampleItems, filters);
+    assert.equal(filtered.length, 1);
+    assert.equal(filtered[0]?.comment.platformCommentId, "ig_comment_1");
+  });
+
+  it("summarizes queue counts for platform and intent clarity", () => {
+    const summary = summarizeInboxQueue(sampleItems);
+
+    assert.equal(summary.total, 3);
+    assert.deepEqual(summary.byPlatform, {
+      instagram: 2,
+      tiktok: 1
+    });
+    assert.deepEqual(summary.byIntent[0], {
+      intent: "question",
+      count: 2
+    });
   });
 });

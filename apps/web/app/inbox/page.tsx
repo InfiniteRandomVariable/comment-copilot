@@ -1,9 +1,13 @@
-import {
-  sendCandidateAction,
-  rejectCandidateAction
-} from "./actions";
+import { sendCandidateAction, rejectCandidateAction } from "./actions";
 import { getConvexServerClient } from "../api/_lib/convexServer";
 import Link from "next/link";
+import {
+  filterInboxItems,
+  INBOX_INTENT_FILTER_OPTIONS,
+  INBOX_PLATFORM_FILTER_OPTIONS,
+  normalizeInboxFilters,
+  summarizeInboxQueue
+} from "./filtering";
 
 const PAGE_SIZE = 50;
 
@@ -69,9 +73,7 @@ function parseContextSummary(contextSnapshotJson?: string) {
 
     const segments = [
       parsed.sourceVideoTitle ? `Source: ${parsed.sourceVideoTitle}` : null,
-      parsed.creatorThemeSummary
-        ? `Creator theme: ${parsed.creatorThemeSummary}`
-        : null,
+      parsed.creatorThemeSummary ? `Creator theme: ${parsed.creatorThemeSummary}` : null,
       parsed.commenterProfileSummary?.username
         ? `Commenter: @${parsed.commenterProfileSummary.username}`
         : null,
@@ -100,6 +102,25 @@ function buildSourceVideoUrl(
   return `https://www.instagram.com/p/${platformPostId}/`;
 }
 
+function buildInboxHref(args: {
+  accountId: string;
+  cursor?: string;
+  history?: string;
+  platform: string;
+  intent: string;
+  q: string;
+}) {
+  const params = new URLSearchParams({ accountId: args.accountId });
+
+  if (args.cursor) params.set("cursor", args.cursor);
+  if (args.history) params.set("history", args.history);
+  if (args.platform && args.platform !== "all") params.set("platform", args.platform);
+  if (args.intent && args.intent !== "all") params.set("intent", args.intent);
+  if (args.q) params.set("q", args.q);
+
+  return `/inbox?${params.toString()}`;
+}
+
 export default async function InboxPage({
   searchParams
 }: {
@@ -109,30 +130,37 @@ export default async function InboxPage({
     history?: string;
     result?: string;
     error?: string;
+    platform?: string;
+    intent?: string;
+    q?: string;
   }>;
 }) {
-  const { accountId, cursor, history, result, error } = await searchParams;
+  const params = await searchParams;
+  const { accountId, cursor, history, result, error } = params;
+  const filters = normalizeInboxFilters({
+    platform: params.platform,
+    intent: params.intent,
+    q: params.q
+  });
+  const hasActiveFilters =
+    filters.platform !== "all" || filters.intent !== "all" || filters.q.length > 0;
+
   const parsedCursor = Number(cursor ?? "");
   const beforeCreationTime =
-    Number.isFinite(parsedCursor) && parsedCursor > 0
-      ? parsedCursor
-      : undefined;
+    Number.isFinite(parsedCursor) && parsedCursor > 0 ? parsedCursor : undefined;
   const historyTokens = (history ?? "")
     .split(",")
     .map((entry) => entry.trim())
     .filter(
       (entry) =>
         entry === "root" ||
-        (entry.length > 0 &&
-          Number.isFinite(Number(entry)) &&
-          Number(entry) > 0)
+        (entry.length > 0 && Number.isFinite(Number(entry)) && Number(entry) > 0)
     );
-  const currentCursorToken = beforeCreationTime
-    ? String(beforeCreationTime)
-    : "root";
+  const currentCursorToken = beforeCreationTime ? String(beforeCreationTime) : "root";
 
   let items: InboxItem[] = [];
   let visibleItems: InboxItem[] = [];
+  let filteredItems: InboxItem[] = [];
   let account: AccountRecord | null = null;
   let loadError: string | null = null;
   let hasNextPage = false;
@@ -142,9 +170,9 @@ export default async function InboxPage({
     try {
       const client = getConvexServerClient();
       const [resolvedAccount, pendingItems] = await Promise.all([
-        client.query("accounts:getAccountById" as never, {
-          accountId
-        } as never) as Promise<AccountRecord | null>,
+        client.query("accounts:getAccountById" as never, { accountId } as never) as Promise<
+          AccountRecord | null
+        >,
         client.query("reviews:listPendingCandidates" as never, {
           accountId,
           limit: PAGE_SIZE + 1,
@@ -155,6 +183,7 @@ export default async function InboxPage({
       account = resolvedAccount;
       items = pendingItems;
       visibleItems = items.slice(0, PAGE_SIZE);
+      filteredItems = filterInboxItems(visibleItems, filters);
       hasNextPage = items.length > PAGE_SIZE;
       nextCursor =
         hasNextPage && visibleItems.length > 0
@@ -162,19 +191,19 @@ export default async function InboxPage({
           : null;
     } catch (loadErr) {
       loadError =
-        loadErr instanceof Error
-          ? loadErr.message
-          : "Unable to load pending candidates.";
+        loadErr instanceof Error ? loadErr.message : "Unable to load pending candidates.";
     }
   }
+
+  const queueSummary = summarizeInboxQueue(visibleItems);
+  const topIntentSummary = queueSummary.byIntent.slice(0, 3);
 
   const nextHistoryTokens = [...historyTokens, currentCursorToken];
   const nextHistoryParam = nextHistoryTokens.join(",");
   const hasPreviousPage = historyTokens.length > 0 || Boolean(beforeCreationTime);
   const previousCursorToken =
     historyTokens.length > 0 ? historyTokens[historyTokens.length - 1] : "root";
-  const previousHistoryTokens =
-    historyTokens.length > 0 ? historyTokens.slice(0, -1) : [];
+  const previousHistoryTokens = historyTokens.length > 0 ? historyTokens.slice(0, -1) : [];
   const previousHistoryParam = previousHistoryTokens.join(",");
 
   return (
@@ -204,14 +233,98 @@ export default async function InboxPage({
             }}
           />
 
-          <button className="btn" type="submit" style={{ width: "fit-content" }}>
-            Load Pending Queue
-          </button>
+          <div
+            style={{
+              display: "grid",
+              gap: 8,
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))"
+            }}
+          >
+            <label style={{ display: "grid", gap: 4 }}>
+              <span className="label" style={{ letterSpacing: 0, textTransform: "none" }}>
+                Platform
+              </span>
+              <select
+                name="platform"
+                defaultValue={filters.platform}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #d8dedf",
+                  fontSize: 14
+                }}
+              >
+                {INBOX_PLATFORM_FILTER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option === "all" ? "All platforms" : option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label style={{ display: "grid", gap: 4 }}>
+              <span className="label" style={{ letterSpacing: 0, textTransform: "none" }}>
+                Intent
+              </span>
+              <select
+                name="intent"
+                defaultValue={filters.intent}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #d8dedf",
+                  fontSize: 14
+                }}
+              >
+                {INBOX_INTENT_FILTER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option === "all" ? "All intents" : option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label style={{ display: "grid", gap: 4 }}>
+              <span className="label" style={{ letterSpacing: 0, textTransform: "none" }}>
+                Search
+              </span>
+              <input
+                name="q"
+                type="text"
+                defaultValue={filters.q}
+                placeholder="comment, reply, username, message id"
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #d8dedf",
+                  fontSize: 14
+                }}
+              />
+            </label>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="btn" type="submit" style={{ width: "fit-content" }}>
+              Load Queue
+            </button>
+            {accountId && hasActiveFilters ? (
+              <Link href={`/inbox?accountId=${accountId}`} className="btn secondary">
+                Clear filters
+              </Link>
+            ) : null}
+          </div>
         </form>
 
         {!accountId ? (
           <p style={{ marginTop: 12, color: "#59636e" }}>
             Enter an account ID to load the review queue.
+          </p>
+        ) : null}
+
+        {hasActiveFilters ? (
+          <p style={{ marginTop: 12, color: "#59636e" }}>
+            Active filters: platform=<strong>{filters.platform}</strong>, intent=
+            <strong>{filters.intent}</strong>, search=<strong>{filters.q || "(none)"}</strong>
           </p>
         ) : null}
 
@@ -244,13 +357,23 @@ export default async function InboxPage({
             <p style={{ marginBottom: 0 }}>@{account.handle}</p>
           </article>
           <article className="card">
-            <div className="label">Pending Candidates (Loaded)</div>
-            <div className="value" style={{ fontSize: 24 }}>
-              {visibleItems.length}
+            <div className="label">Queue Snapshot</div>
+            <div style={{ marginTop: 8, fontSize: 14 }}>
+              Loaded page: <strong>{queueSummary.total}</strong>
             </div>
-            <p style={{ marginBottom: 0 }}>
-              Most recent first ({PAGE_SIZE} per page)
-            </p>
+            <div style={{ marginTop: 4, fontSize: 14 }}>
+              After filters: <strong>{filteredItems.length}</strong>
+            </div>
+            <div style={{ marginTop: 4, fontSize: 13, color: "#59636e" }}>
+              IG {queueSummary.byPlatform.instagram} | TikTok {queueSummary.byPlatform.tiktok}
+            </div>
+            {topIntentSummary.length > 0 ? (
+              <div style={{ marginTop: 4, fontSize: 13, color: "#59636e" }}>
+                Top intents: {topIntentSummary
+                  .map((entry) => `${entry.intent} (${entry.count})`)
+                  .join(", ")}
+              </div>
+            ) : null}
           </article>
           <article className="card">
             <div className="label">Owner User ID</div>
@@ -263,174 +386,159 @@ export default async function InboxPage({
 
       {account && visibleItems.length === 0 ? (
         <section className="card">
+          <p style={{ margin: 0 }}>No pending candidates for this account yet.</p>
+        </section>
+      ) : null}
+
+      {account && visibleItems.length > 0 && filteredItems.length === 0 ? (
+        <section className="card">
           <p style={{ margin: 0 }}>
-            No pending candidates for this account yet.
+            No queue items matched the current filters on this page.
           </p>
         </section>
       ) : null}
 
       {account
-        ? visibleItems.map((item) => (
-            <section className="card" key={item.candidate._id}>
-              <div
-                style={{
-                  display: "grid",
-                  gap: 10
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    gap: 12,
-                    flexWrap: "wrap"
-                  }}
-                >
-                  <div style={{ fontSize: 12, color: "#59636e" }}>
-                    {item.comment.commenterUsername
-                      ? `@${item.comment.commenterUsername}`
-                      : "unknown commenter"}{" "}
-                    | messageId: {item.candidate.messageId ?? "-"} | intent:{" "}
-                    {item.candidate.intentLabel ?? "unknown"} (
-                    {formatPercent(item.candidate.intentConfidence)})
-                  </div>
-                  <div style={{ fontSize: 12, color: "#59636e" }}>
-                    {formatTimestamp(item.candidate.createdAt)}
-                  </div>
-                </div>
-                <div style={{ fontSize: 12, color: "#59636e" }}>
-                  {buildSourceVideoUrl(
-                    item.comment.platform,
-                    account.handle,
-                    item.comment.platformPostId
-                  ) ? (
-                    <a
-                      href={
-                        buildSourceVideoUrl(
-                          item.comment.platform,
-                          account.handle,
-                          item.comment.platformPostId
-                        ) ?? "#"
-                      }
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ color: "#005f73", textDecoration: "underline" }}
-                    >
-                      Open source video
-                    </a>
-                  ) : (
-                    "Source video link unavailable"
-                  )}
-                  <span> | </span>
-                  <span>{parseContextSummary(item.candidate.contextSnapshotJson)}</span>
-                </div>
+        ? filteredItems.map((item) => {
+            const sourceVideoUrl = buildSourceVideoUrl(
+              item.comment.platform,
+              account.handle,
+              item.comment.platformPostId
+            );
 
-                <div
-                  style={{
-                    display: "grid",
-                    gap: 10,
-                    gridTemplateColumns: "minmax(0, 1fr)",
-                    alignItems: "start",
-                    marginTop: 2
-                  }}
-                >
-                  <div>
-                    <div className="label">Comment</div>
-                    <div
-                      style={{
-                        marginTop: 6,
-                        background: "#f7fbfc",
-                        border: "1px solid #d8dedf",
-                        borderRadius: 10,
-                        padding: 10
-                      }}
-                    >
-                      {item.comment.text}
+            return (
+              <section className="card" key={item.candidate._id}>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      flexWrap: "wrap"
+                    }}
+                  >
+                    <div style={{ fontSize: 12, color: "#59636e" }}>
+                      {item.comment.commenterUsername
+                        ? `@${item.comment.commenterUsername}`
+                        : "unknown commenter"}{" "}
+                      | messageId: {item.candidate.messageId ?? "-"} | intent:{" "}
+                      {item.candidate.intentLabel ?? "unknown"} (
+                      {formatPercent(item.candidate.intentConfidence)})
+                    </div>
+                    <div style={{ fontSize: 12, color: "#59636e" }}>
+                      {formatTimestamp(item.candidate.createdAt)}
                     </div>
                   </div>
+                  <div style={{ fontSize: 12, color: "#59636e" }}>
+                    {sourceVideoUrl ? (
+                      <a
+                        href={sourceVideoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: "#005f73", textDecoration: "underline" }}
+                      >
+                        Open source video
+                      </a>
+                    ) : (
+                      "Source video link unavailable"
+                    )}
+                    <span> | </span>
+                    <span>{parseContextSummary(item.candidate.contextSnapshotJson)}</span>
+                  </div>
 
-                  <form action={sendCandidateAction} className="grid" style={{ gap: 8 }}>
-                    <input type="hidden" name="accountId" value={account._id} />
-                    <input
-                      type="hidden"
-                      name="cursor"
-                      value={beforeCreationTime ? String(beforeCreationTime) : ""}
-                    />
-                    <input type="hidden" name="history" value={historyTokens.join(",")} />
-                    <input
-                      type="hidden"
-                      name="ownerUserId"
-                      value={account.ownerUserId}
-                    />
-                    <input
-                      type="hidden"
-                      name="candidateId"
-                      value={item.candidate._id}
-                    />
-                    <input
-                      type="hidden"
-                      name="originalText"
-                      value={item.candidate.text}
-                    />
-                    <label className="label" htmlFor={`reply-${item.candidate._id}`}>
-                      Reply (click and edit directly)
-                    </label>
-                    <textarea
-                      id={`reply-${item.candidate._id}`}
-                      name="editedText"
-                      defaultValue={item.candidate.text}
-                      rows={4}
-                      style={{
-                        width: "100%",
-                        borderRadius: 10,
-                        border: "1px solid #d8dedf",
-                        padding: 10,
-                        fontFamily: "inherit",
-                        fontSize: 14
-                      }}
-                    />
-                    <button className="btn" type="submit">
-                      Send Reply
-                    </button>
-                  </form>
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 10,
+                      gridTemplateColumns: "minmax(0, 1fr)",
+                      alignItems: "start",
+                      marginTop: 2
+                    }}
+                  >
+                    <div>
+                      <div className="label">Comment</div>
+                      <div
+                        style={{
+                          marginTop: 6,
+                          background: "#f7fbfc",
+                          border: "1px solid #d8dedf",
+                          borderRadius: 10,
+                          padding: 10
+                        }}
+                      >
+                        {item.comment.text}
+                      </div>
+                    </div>
 
-                  <form action={rejectCandidateAction}>
-                    <input type="hidden" name="accountId" value={account._id} />
-                    <input
-                      type="hidden"
-                      name="cursor"
-                      value={beforeCreationTime ? String(beforeCreationTime) : ""}
-                    />
-                    <input type="hidden" name="history" value={historyTokens.join(",")} />
-                    <input
-                      type="hidden"
-                      name="ownerUserId"
-                      value={account.ownerUserId}
-                    />
-                    <input
-                      type="hidden"
-                      name="candidateId"
-                      value={item.candidate._id}
-                    />
-                    <button
-                      type="submit"
-                      style={{
-                        border: "1px solid #ef4444",
-                        background: "#fff1f2",
-                        color: "#9f1239",
-                        padding: "10px 14px",
-                        borderRadius: 10,
-                        fontWeight: 600
-                      }}
-                    >
-                      Reject
-                    </button>
-                  </form>
+                    <form action={sendCandidateAction} className="grid" style={{ gap: 8 }}>
+                      <input type="hidden" name="accountId" value={account._id} />
+                      <input
+                        type="hidden"
+                        name="cursor"
+                        value={beforeCreationTime ? String(beforeCreationTime) : ""}
+                      />
+                      <input type="hidden" name="history" value={historyTokens.join(",")} />
+                      <input type="hidden" name="platform" value={filters.platform} />
+                      <input type="hidden" name="intent" value={filters.intent} />
+                      <input type="hidden" name="q" value={filters.q} />
+                      <input type="hidden" name="ownerUserId" value={account.ownerUserId} />
+                      <input type="hidden" name="candidateId" value={item.candidate._id} />
+                      <input type="hidden" name="originalText" value={item.candidate.text} />
+                      <label className="label" htmlFor={`reply-${item.candidate._id}`}>
+                        Reply (click and edit directly)
+                      </label>
+                      <textarea
+                        id={`reply-${item.candidate._id}`}
+                        name="editedText"
+                        defaultValue={item.candidate.text}
+                        rows={4}
+                        style={{
+                          width: "100%",
+                          borderRadius: 10,
+                          border: "1px solid #d8dedf",
+                          padding: 10,
+                          fontFamily: "inherit",
+                          fontSize: 14
+                        }}
+                      />
+                      <button className="btn" type="submit">
+                        Send Reply
+                      </button>
+                    </form>
+
+                    <form action={rejectCandidateAction}>
+                      <input type="hidden" name="accountId" value={account._id} />
+                      <input
+                        type="hidden"
+                        name="cursor"
+                        value={beforeCreationTime ? String(beforeCreationTime) : ""}
+                      />
+                      <input type="hidden" name="history" value={historyTokens.join(",")} />
+                      <input type="hidden" name="platform" value={filters.platform} />
+                      <input type="hidden" name="intent" value={filters.intent} />
+                      <input type="hidden" name="q" value={filters.q} />
+                      <input type="hidden" name="ownerUserId" value={account.ownerUserId} />
+                      <input type="hidden" name="candidateId" value={item.candidate._id} />
+                      <button
+                        type="submit"
+                        style={{
+                          border: "1px solid #ef4444",
+                          background: "#fff1f2",
+                          color: "#9f1239",
+                          padding: "10px 14px",
+                          borderRadius: 10,
+                          fontWeight: 600
+                        }}
+                      >
+                        Reject
+                      </button>
+                    </form>
+                  </div>
                 </div>
-              </div>
-            </section>
-          ))
+              </section>
+            );
+          })
         : null}
 
       {account && visibleItems.length > 0 ? (
@@ -439,12 +547,21 @@ export default async function InboxPage({
             <Link
               href={
                 previousCursorToken === "root"
-                  ? previousHistoryParam
-                    ? `/inbox?accountId=${account._id}&history=${previousHistoryParam}`
-                    : `/inbox?accountId=${account._id}`
-                  : previousHistoryParam
-                    ? `/inbox?accountId=${account._id}&cursor=${previousCursorToken}&history=${previousHistoryParam}`
-                    : `/inbox?accountId=${account._id}&cursor=${previousCursorToken}`
+                  ? buildInboxHref({
+                      accountId: account._id,
+                      history: previousHistoryParam || undefined,
+                      platform: filters.platform,
+                      intent: filters.intent,
+                      q: filters.q
+                    })
+                  : buildInboxHref({
+                      accountId: account._id,
+                      cursor: previousCursorToken,
+                      history: previousHistoryParam || undefined,
+                      platform: filters.platform,
+                      intent: filters.intent,
+                      q: filters.q
+                    })
               }
               className="btn secondary"
             >
@@ -457,7 +574,14 @@ export default async function InboxPage({
           )}
           {hasNextPage && nextCursor ? (
             <Link
-              href={`/inbox?accountId=${account._id}&cursor=${nextCursor}&history=${nextHistoryParam}`}
+              href={buildInboxHref({
+                accountId: account._id,
+                cursor: String(nextCursor),
+                history: nextHistoryParam,
+                platform: filters.platform,
+                intent: filters.intent,
+                q: filters.q
+              })}
               className="btn"
             >
               Next

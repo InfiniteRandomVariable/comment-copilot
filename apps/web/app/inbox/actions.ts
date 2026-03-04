@@ -51,6 +51,9 @@ function buildInboxRedirectUrl(args: {
   accountId: string;
   cursor?: string;
   history?: string;
+  platform?: string;
+  intent?: string;
+  q?: string;
   result?: string;
   error?: string;
 }) {
@@ -62,6 +65,18 @@ function buildInboxRedirectUrl(args: {
 
   if (args.history) {
     params.set("history", args.history);
+  }
+
+  if (args.platform) {
+    params.set("platform", args.platform);
+  }
+
+  if (args.intent) {
+    params.set("intent", args.intent);
+  }
+
+  if (args.q) {
+    params.set("q", args.q);
   }
 
   if (args.result) {
@@ -343,6 +358,11 @@ async function markSendFailed(args: { candidateId: string; commentId: string }) 
 
 export async function approveCandidateAction(formData: FormData) {
   const accountId = getRequiredValue(formData, "accountId");
+  const cursor = getOptionalValue(formData, "cursor");
+  const history = getOptionalValue(formData, "history");
+  const platform = getOptionalValue(formData, "platform");
+  const intent = getOptionalValue(formData, "intent");
+  const q = getOptionalValue(formData, "q");
   let result: string | undefined;
   let errorMessage: string | undefined;
   let context: CandidateSendContext | undefined;
@@ -370,10 +390,11 @@ export async function approveCandidateAction(formData: FormData) {
         status: context.candidate.status,
         action: "approve"
       });
-      result = "approved";
+      result = context.candidate.status === "edited_and_sent" ? "edited_and_sent" : "approved";
     } else {
       assertCandidateCanAttemptSend(context.candidate.status);
       shouldMarkSendFailed = true;
+
       const platformSend = await resolvePlatformSendForCandidate({
         accountId,
         candidateId,
@@ -421,6 +442,11 @@ export async function approveCandidateAction(formData: FormData) {
   redirect(
     buildInboxRedirectUrl({
       accountId,
+      cursor,
+      history,
+      platform,
+      intent,
+      q,
       result,
       error: errorMessage
     })
@@ -431,6 +457,9 @@ export async function sendCandidateAction(formData: FormData) {
   const accountId = getRequiredValue(formData, "accountId");
   const cursor = getOptionalValue(formData, "cursor");
   const history = getOptionalValue(formData, "history");
+  const platform = getOptionalValue(formData, "platform");
+  const intent = getOptionalValue(formData, "intent");
+  const q = getOptionalValue(formData, "q");
   let result: string | undefined;
   let errorMessage: string | undefined;
   let context: CandidateSendContext | undefined;
@@ -463,9 +492,10 @@ export async function sendCandidateAction(formData: FormData) {
         status: context.candidate.status,
         action: "send"
       });
-      result = context.candidate.status === "edited_and_sent"
-        ? "edited_and_sent"
-        : "approved_and_sent";
+      result =
+        context.candidate.status === "edited_and_sent"
+          ? "edited_and_sent"
+          : "approved_and_sent";
     } else {
       assertCandidateCanAttemptSend(context.candidate.status);
       shouldMarkSendFailed = true;
@@ -525,8 +555,7 @@ export async function sendCandidateAction(formData: FormData) {
       }
     }
 
-    errorMessage =
-      error instanceof Error ? error.message : "Failed to send candidate";
+    errorMessage = error instanceof Error ? error.message : "Failed to send candidate";
   }
 
   redirect(
@@ -534,6 +563,9 @@ export async function sendCandidateAction(formData: FormData) {
       accountId,
       cursor,
       history,
+      platform,
+      intent,
+      q,
       result,
       error: errorMessage
     })
@@ -544,6 +576,9 @@ export async function rejectCandidateAction(formData: FormData) {
   const accountId = getRequiredValue(formData, "accountId");
   const cursor = getOptionalValue(formData, "cursor");
   const history = getOptionalValue(formData, "history");
+  const platform = getOptionalValue(formData, "platform");
+  const intent = getOptionalValue(formData, "intent");
+  const q = getOptionalValue(formData, "q");
   let result: string | undefined;
   let errorMessage: string | undefined;
 
@@ -570,6 +605,9 @@ export async function rejectCandidateAction(formData: FormData) {
       accountId,
       cursor,
       history,
+      platform,
+      intent,
+      q,
       result,
       error: errorMessage
     })
