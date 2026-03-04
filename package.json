@@ -34,7 +34,8 @@
     "check:isolation": "./scripts/check-isolation.sh",
     "smoke:stripe:webhook": "./scripts/smoke-stripe-webhook.sh",
     "smoke:tiktok:webhook": "./scripts/smoke-tiktok-webhook.sh",
-    "sync:web:env": "node scripts/sync-web-env.mjs"
+    "sync:web:env": "node scripts/sync-web-env.mjs",
+    "rehearse:incident:runbooks": "./scripts/rehearse-incident-runbooks.sh"
   },
   "devDependencies": {
     "convex": "^1.17.4",
