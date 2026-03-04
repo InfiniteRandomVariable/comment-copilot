@@ -37,6 +37,12 @@ Required groups:
 pnpm exec convex run devSeed:getFirstAccountId --typecheck disable --codegen disable
 ```
 
+4. Run consolidated deploy-checklist verification (runtime checks require web service up):
+
+```bash
+APP_URL=http://<app-url> VERIFY_CONVEX=0 pnpm verify:deploy:checklist
+```
+
 ## Deploy Order
 
 1. Deploy Convex functions/schema changes.
@@ -51,12 +57,14 @@ Run after deploy and again after any rollback action:
 ```bash
 curl -sS http://<app-url>/api/health/orchestration
 APP_URL=http://<app-url> pnpm smoke:stripe:webhook
+APP_URL=http://<app-url> VERIFY_CONVEX=0 pnpm verify:deploy:checklist
 ```
 
 Expected:
 
 - Health route returns `{"ok": true, ...}`.
 - Stripe smoke returns pass message with expected HTTP 400 signature enforcement behavior.
+- Consolidated verification exits with code 0 and records artifacts.
 
 ## Rollback Procedure
 
@@ -84,4 +92,5 @@ Capture and link:
 - exact commands run
 - smoke outputs
 - rollback rehearsal notes/results
+- consolidated verification artifact directory
 - incident/escalation notes if triggered
