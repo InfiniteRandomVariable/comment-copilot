@@ -510,7 +510,9 @@ export default defineSchema({
     ),
     metadataJson: v.string(),
     createdAt: v.number()
-  }).index("by_comment", ["commentId"]),
+  })
+    .index("by_comment", ["commentId"])
+    .index("by_status_created", ["runStatus", "createdAt"]),
 
   auditLogs: defineTable({
     accountId: v.id("accounts"),

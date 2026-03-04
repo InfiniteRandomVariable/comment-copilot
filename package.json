@@ -28,6 +28,7 @@
     "report:web:webhooks:e2e:junit": "node scripts/report-oauth-junit.mjs apps/web/test-results/webhooks.e2e.junit.xml",
     "verify:web:oauth:junit": "node scripts/verify-oauth-junit.mjs apps/web/test-results/oauth.junit.xml --config apps/web/tests/oauth-quality-gate.json",
     "verify:web:webhooks:e2e:junit": "node scripts/verify-oauth-junit.mjs apps/web/test-results/webhooks.e2e.junit.xml --config apps/web/tests/webhooks-e2e-quality-gate.json",
+    "verify:error-tracking": "./scripts/verify-error-tracking.sh",
     "verify:phase-boundary": "node scripts/verify-phase-boundary.mjs",
     "ci:check": "pnpm verify:phase-boundary && pnpm typecheck && pnpm test:web:inbox && pnpm test:web:oauth:ci && pnpm verify:web:oauth:junit && pnpm test:web:webhooks:e2e:ci && pnpm verify:web:webhooks:e2e:junit && pnpm test:web:telemetry && pnpm check:isolation",
     "lint": "pnpm -r lint",

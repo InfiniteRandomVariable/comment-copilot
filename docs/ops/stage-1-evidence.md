@@ -15,7 +15,7 @@
 | Item | Pass/Fail | Required Tests | Artifacts/Links | Owner Signoff | Notes |
 | --- | --- | --- | --- | --- | --- |
 | 1 | PASS | `pnpm ci:check`, `pnpm verify:phase-boundary` | CI workflow logs + retained JUnit artifacts | Approved | CI gate established and stable. |
-| 2 | PENDING | `pnpm ci:check`, observability verification checks | Pending | Pending | Error tracking/latency/alerts partially implemented. |
+| 2 | PENDING | `pnpm ci:check`, `pnpm verify:error-tracking`, observability verification checks | `docs/ops/error-tracking-verification-2026-03-04.md` | Pending | Error-tracking verification path added; latency and alert-routing evidence still pending. |
 | 3 | PENDING | `pnpm ci:check`, incident runbook walkthrough checks | Pending | Pending | Runbooks exist but not fully completed/rehearsed. |
 | 4 | PENDING | `pnpm ci:check`, deploy checklist dry-run checks | Pending | Pending | Unified production checklist not finalized. |
 
