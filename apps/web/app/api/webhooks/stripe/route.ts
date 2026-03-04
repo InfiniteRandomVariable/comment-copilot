@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConvexServerClient } from "../../_lib/convexServer";
+import { reportErrorTrackingEvent } from "../../_lib/errorTracking";
 import Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -20,6 +21,9 @@ function mapSubscriptionStatusToBilling(
 }
 
 export async function POST(request: NextRequest) {
+  let accountId: string | undefined;
+  let eventType: string | undefined;
+
   try {
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -51,7 +55,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: message }, { status: 400 });
     }
 
-    let accountId: string | undefined;
+    eventType = event.type;
     let stripeCustomerId: string | undefined;
     let stripeSubscriptionId: string | undefined;
     let planType: "free" | "paid" | undefined;
@@ -152,6 +156,17 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    await reportErrorTrackingEvent({
+      source: "webhook:stripe",
+      category: "webhook_processing_failed",
+      message,
+      metadata: {
+        route: "/api/webhooks/stripe",
+        accountId,
+        eventType,
+        statusCode: 500
+      }
+    });
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

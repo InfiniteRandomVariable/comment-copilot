@@ -43,7 +43,7 @@ APP_URL=http://localhost:3100 VERIFY_CONVEX=0 ./scripts/smoke-tiktok-webhook.sh
 ### 4) Automated regression coverage
 
 - `pnpm --filter @copilot/web test:webhooks:e2e`
-- assertion coverage includes: external error-tracking event dispatch from TikTok webhook failure path
+- assertion coverage includes: external error-tracking event dispatch from TikTok and Instagram webhook failure paths
 
 ## Results
 
@@ -85,8 +85,8 @@ This verifies error events are exported to an external sink when configured.
 
 ### 4) Automated regression coverage
 
-- `tests/webhooks.e2e.integration.test.ts` passed with 7/7 tests.
-- includes case: `"reports tiktok processing failures to external error tracking webhook"`
+- `tests/webhooks.e2e.integration.test.ts` passed with 8/8 tests.
+- includes cases: `"reports tiktok processing failures to external error tracking webhook"` and `"reports instagram processing failures to external error tracking webhook"`
 - validates payload fields (`source`, `category`, `message`, `metadata.route`, `metadata.accountId`, `metadata.statusCode`).
 
 ## Artifact Paths
@@ -117,4 +117,4 @@ Error-tracking sink verification:
 
 ## Conclusion
 
-Stage 1 Item 2 observability verification now includes latency visibility, webhook failure alert routing, and external error-tracking export evidence. Item 2 remains `PENDING` until owner signoff.
+Stage 1 Item 2 observability verification now includes latency visibility, webhook failure alert routing, and external error-tracking export evidence. Error sink runtime verification was executed for TikTok, and the same sink helper is wired in TikTok, Instagram, and Stripe catch paths (inferred from route code updates). Item 2 remains `PENDING` until owner signoff.
