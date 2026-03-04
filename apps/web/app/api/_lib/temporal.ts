@@ -52,12 +52,18 @@ async function startInlineCommentWorkflow(input: CommentWorkflowInput) {
     return { workflowId, started: false as const, alreadyStarted: true as const };
   }
 
-  const runPromise = runInlineCommentWorkflow(input).finally(() => {
-    inlineInFlightByWorkflowId.delete(workflowId);
-  });
+  const runPromise = runInlineCommentWorkflow(input)
+    .catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(
+        `[orchestration] inline workflow ${workflowId} failed after webhook accept: ${message}`
+      );
+    })
+    .finally(() => {
+      inlineInFlightByWorkflowId.delete(workflowId);
+    });
   inlineInFlightByWorkflowId.set(workflowId, runPromise);
 
-  await runPromise;
   return { workflowId, started: true as const, alreadyStarted: false as const };
 }
 

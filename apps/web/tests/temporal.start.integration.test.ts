@@ -62,6 +62,15 @@ vi.mock("../../worker/src/activities", () => ({
 
 import { startCommentWorkflow } from "../app/api/_lib/temporal";
 
+async function waitForInlineDispatch(callCount: number) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    if (hoisted.runCommentWorkflowMock.mock.calls.length >= callCount) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
 describe("startCommentWorkflow", () => {
   beforeEach(() => {
     hoisted.startMock.mockReset();
@@ -122,11 +131,12 @@ describe("startCommentWorkflow", () => {
 
     const result = await startCommentWorkflow({
       accountId: "acc_1",
-      commentId: "com_1"
+      commentId: "com_inline_success_1"
     });
+    await waitForInlineDispatch(1);
 
     assert.deepEqual(result, {
-      workflowId: "comment-com_1",
+      workflowId: "comment-com_inline_success_1",
       started: true,
       alreadyStarted: false
     });
@@ -138,7 +148,7 @@ describe("startCommentWorkflow", () => {
       { accountId: string; commentId: string },
       Record<string, unknown>
     ];
-    assert.deepEqual(input, { accountId: "acc_1", commentId: "com_1" });
+    assert.deepEqual(input, { accountId: "acc_1", commentId: "com_inline_success_1" });
     assert.equal(activities.logStage, hoisted.logStageMock);
     assert.equal(activities.buildContext, hoisted.buildContextMock);
     assert.equal(activities.interpretIntent, hoisted.interpretIntentMock);
@@ -147,21 +157,44 @@ describe("startCommentWorkflow", () => {
     assert.equal(activities.routeAndPersist, hoisted.routeAndPersistMock);
   });
 
+  it("accepts inline start even when workflow execution fails later", async () => {
+    process.env.COMMENT_ORCHESTRATION_MODE = "inline";
+    hoisted.runCommentWorkflowMock.mockRejectedValue(new Error("generation failure"));
+
+    const result = await startCommentWorkflow({
+      accountId: "acc_1",
+      commentId: "com_inline_fail_1"
+    });
+    await waitForInlineDispatch(1);
+
+    assert.deepEqual(result, {
+      workflowId: "comment-com_inline_fail_1",
+      started: true,
+      alreadyStarted: false
+    });
+    assert.equal(hoisted.connectMock.mock.calls.length, 0);
+    assert.equal(hoisted.startMock.mock.calls.length, 0);
+    assert.equal(hoisted.runCommentWorkflowMock.mock.calls.length, 1);
+  });
+
   it("deduplicates concurrent inline starts for the same comment", async () => {
     process.env.COMMENT_ORCHESTRATION_MODE = "inline";
-    hoisted.runCommentWorkflowMock.mockResolvedValue(undefined);
+    hoisted.runCommentWorkflowMock.mockImplementation(
+      async () => await new Promise((resolve) => setTimeout(resolve, 20))
+    );
 
+    const dedupeCommentId = "com_inline_dedupe_1";
     const firstStart = startCommentWorkflow({
       accountId: "acc_1",
-      commentId: "com_1"
+      commentId: dedupeCommentId
     });
     const secondStart = await startCommentWorkflow({
       accountId: "acc_1",
-      commentId: "com_1"
+      commentId: dedupeCommentId
     });
 
     assert.deepEqual(secondStart, {
-      workflowId: "comment-com_1",
+      workflowId: "comment-com_inline_dedupe_1",
       started: false,
       alreadyStarted: true
     });
@@ -169,12 +202,12 @@ describe("startCommentWorkflow", () => {
     assert.equal(hoisted.startMock.mock.calls.length, 0);
 
     const firstResult = await firstStart;
-    assert.equal(hoisted.runCommentWorkflowMock.mock.calls.length, 1);
-
     assert.deepEqual(firstResult, {
-      workflowId: "comment-com_1",
+      workflowId: "comment-com_inline_dedupe_1",
       started: true,
       alreadyStarted: false
     });
+    await waitForInlineDispatch(1);
+    assert.equal(hoisted.runCommentWorkflowMock.mock.calls.length, 1);
   });
 });

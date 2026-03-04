@@ -512,8 +512,13 @@ export async function interpretIntent(input: {
 
 export async function generateDraft(input: GenerateDraftInput) {
   const client = getClient();
-  const model = process.env.AI_MODEL;
+  const configuredModel = process.env.AI_MODEL?.trim();
+  const model = configuredModel || "fallback-local";
   const completionsUrl = process.env.AI_CHAT_COMPLETIONS_URL;
+  const apiKey = process.env.AI_API_KEY;
+  const hasGenerationProviderConfig = Boolean(
+    configuredModel && completionsUrl && apiKey
+  );
   const providerTimeoutMs = parsePositiveIntOrDefault(
     process.env.AI_PROVIDER_TIMEOUT_MS,
     20_000
@@ -530,13 +535,6 @@ export async function generateDraft(input: GenerateDraftInput) {
     process.env.AI_PROVIDER_RETRY_MAX_MS,
     5_000
   );
-
-  if (!model) {
-    throw new Error("AI_MODEL is not set for worker generation");
-  }
-  if (!completionsUrl) {
-    throw new Error("AI_CHAT_COMPLETIONS_URL is not set for worker generation");
-  }
 
   const estimatedTokens = Math.max(
     260,
@@ -562,6 +560,7 @@ export async function generateDraft(input: GenerateDraftInput) {
     130,
     Math.ceil((input.commentText.length + input.creatorThemeSummary.length) * 0.7)
   );
+  const baseSignals = buildBaseSignals(input);
 
   let promptTokens = 0;
   let completionTokens = 0;
@@ -578,121 +577,139 @@ export async function generateDraft(input: GenerateDraftInput) {
   let finalizationError: unknown;
 
   try {
-    const apiKey = process.env.AI_API_KEY;
-    if (!apiKey) {
-      throw new Error("AI_API_KEY is not set for worker generation");
-    }
+    if (!hasGenerationProviderConfig) {
+      promptTokens = fallbackPromptTokens;
+      completionTokens = Math.max(50, Math.ceil(fallbackDraftText.length * 0.5));
+      draft = {
+        draftText: fallbackDraftText,
+        confidenceScore: Number(
+          Math.max(0.55, Math.min(0.72, input.intentConfidence - 0.15)).toFixed(2)
+        ),
+        rationale:
+          "Generated fallback draft because AI provider configuration is missing; route to manual review.",
+        personalizationSignals: baseSignals,
+        generationTelemetry: {
+          providerAttempts: 0,
+          providerRetries: 0,
+          providerStatusCode: null,
+          providerUsedRetryAfter: false,
+          model
+        }
+      };
+    } else {
+      const providerApiKey = apiKey as string;
+      const providerCompletionsUrl = completionsUrl as string;
 
-    const systemPrompt = [
-      "You draft social-media comment replies for a creator account.",
-      "Follow brand style and keep replies concise, natural, and safe.",
-      "Never include policy explanations, only the reply content.",
-      "Return strict JSON with keys: draftText, rationale, personalizationSignals.",
-      "draftText must be 1-2 sentences and under 280 characters."
-    ].join("\n");
+      const systemPrompt = [
+        "You draft social-media comment replies for a creator account.",
+        "Follow brand style and keep replies concise, natural, and safe.",
+        "Never include policy explanations, only the reply content.",
+        "Return strict JSON with keys: draftText, rationale, personalizationSignals.",
+        "draftText must be 1-2 sentences and under 280 characters."
+      ].join("\n");
 
-    const userPayload = {
-      commentText: input.commentText,
-      sourceVideoTitle: input.sourceVideoTitle,
-      creatorThemeSummary: input.creatorThemeSummary,
-      intentLabel: input.intentLabel,
-      intentConfidence: input.intentConfidence,
-      engagementGoal: input.engagementGoal,
-      contextCompleteness: input.contextCompleteness,
-      responseStyleMarkdown: input.responseStyleMarkdown,
-      customStyleMarkdown: input.customStyleMarkdown
-    };
+      const userPayload = {
+        commentText: input.commentText,
+        sourceVideoTitle: input.sourceVideoTitle,
+        creatorThemeSummary: input.creatorThemeSummary,
+        intentLabel: input.intentLabel,
+        intentConfidence: input.intentConfidence,
+        engagementGoal: input.engagementGoal,
+        contextCompleteness: input.contextCompleteness,
+        responseStyleMarkdown: input.responseStyleMarkdown,
+        customStyleMarkdown: input.customStyleMarkdown
+      };
 
-    const requestBody = JSON.stringify({
-      model,
-      temperature: 0.35,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: JSON.stringify(userPayload) }
-      ]
-    });
+      const requestBody = JSON.stringify({
+        model,
+        temperature: 0.35,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: JSON.stringify(userPayload) }
+        ]
+      });
 
-    const providerCall = await callProviderWithRetry({
-      url: completionsUrl,
-      apiKey,
-      requestBody,
-      timeoutMs: providerTimeoutMs,
-      maxRetries: providerMaxRetries,
-      retryBaseMs: providerRetryBaseMs,
-      retryMaxMs: providerRetryMaxMs,
-      errorContext: "Draft generation provider request failed"
-    });
-    const providerBodyText = providerCall.responseBody;
+      const providerCall = await callProviderWithRetry({
+        url: providerCompletionsUrl,
+        apiKey: providerApiKey,
+        requestBody,
+        timeoutMs: providerTimeoutMs,
+        maxRetries: providerMaxRetries,
+        retryBaseMs: providerRetryBaseMs,
+        retryMaxMs: providerRetryMaxMs,
+        errorContext: "Draft generation provider request failed"
+      });
+      const providerBodyText = providerCall.responseBody;
 
-    let providerPayload: unknown;
-    try {
-      providerPayload = JSON.parse(providerBodyText);
-    } catch {
-      throw new Error("Draft generation provider returned invalid JSON payload");
-    }
-
-    const assistantText = extractAssistantText(providerPayload);
-    if (!assistantText) {
-      throw new Error("Draft generation provider returned empty completion");
-    }
-
-    const parsedDraft = parseProviderDraft(assistantText);
-    const draftText = normalizeWhitespace(
-      (parsedDraft.draftText || stripMarkdownCodeFence(assistantText) || fallbackDraftText).slice(
-        0,
-        280
-      )
-    );
-    if (!draftText) {
-      throw new Error("Draft generation provider did not produce a usable draft");
-    }
-
-    const baseSignals = buildBaseSignals(input);
-    const modelSignals = parsedDraft.personalizationSignals
-      .map(toSafeSignal)
-      .filter(Boolean);
-    const personalizationSignals = Array.from(
-      new Set([...baseSignals, ...modelSignals])
-    ).slice(0, 8);
-
-    const rationale = normalizeWhitespace(
-      parsedDraft.rationale ||
-        "Generated with provider completion using interpreted intent and active style context."
-    ).slice(0, 260);
-
-    const usage = extractUsageTokens(providerPayload);
-    promptTokens =
-      usage.promptTokens && usage.promptTokens > 0
-        ? usage.promptTokens
-        : fallbackPromptTokens;
-    completionTokens =
-      usage.completionTokens && usage.completionTokens > 0
-        ? usage.completionTokens
-        : Math.max(50, Math.ceil(draftText.length * 0.5));
-
-    draft = {
-      draftText,
-      confidenceScore: Number(
-        Math.max(
-          0.68,
-          Math.min(
-            0.94,
-            input.intentConfidence +
-              (input.contextCompleteness === "complete" ? 0.04 : -0.02)
-          )
-        ).toFixed(2)
-      ),
-      rationale,
-      personalizationSignals,
-      generationTelemetry: {
-        providerAttempts: providerCall.attempts,
-        providerRetries: providerCall.retries,
-        providerStatusCode: providerCall.statusCode,
-        providerUsedRetryAfter: providerCall.usedRetryAfter,
-        model
+      let providerPayload: unknown;
+      try {
+        providerPayload = JSON.parse(providerBodyText);
+      } catch {
+        throw new Error("Draft generation provider returned invalid JSON payload");
       }
-    };
+
+      const assistantText = extractAssistantText(providerPayload);
+      if (!assistantText) {
+        throw new Error("Draft generation provider returned empty completion");
+      }
+
+      const parsedDraft = parseProviderDraft(assistantText);
+      const draftText = normalizeWhitespace(
+        (parsedDraft.draftText || stripMarkdownCodeFence(assistantText) || fallbackDraftText).slice(
+          0,
+          280
+        )
+      );
+      if (!draftText) {
+        throw new Error("Draft generation provider did not produce a usable draft");
+      }
+
+      const modelSignals = parsedDraft.personalizationSignals
+        .map(toSafeSignal)
+        .filter(Boolean);
+      const personalizationSignals = Array.from(
+        new Set([...baseSignals, ...modelSignals])
+      ).slice(0, 8);
+
+      const rationale = normalizeWhitespace(
+        parsedDraft.rationale ||
+          "Generated with provider completion using interpreted intent and active style context."
+      ).slice(0, 260);
+
+      const usage = extractUsageTokens(providerPayload);
+      promptTokens =
+        usage.promptTokens && usage.promptTokens > 0
+          ? usage.promptTokens
+          : fallbackPromptTokens;
+      completionTokens =
+        usage.completionTokens && usage.completionTokens > 0
+          ? usage.completionTokens
+          : Math.max(50, Math.ceil(draftText.length * 0.5));
+
+      draft = {
+        draftText,
+        confidenceScore: Number(
+          Math.max(
+            0.68,
+            Math.min(
+              0.94,
+              input.intentConfidence +
+                (input.contextCompleteness === "complete" ? 0.04 : -0.02)
+            )
+          ).toFixed(2)
+        ),
+        rationale,
+        personalizationSignals,
+        generationTelemetry: {
+          providerAttempts: providerCall.attempts,
+          providerRetries: providerCall.retries,
+          providerStatusCode: providerCall.statusCode,
+          providerUsedRetryAfter: providerCall.usedRetryAfter,
+          model
+        }
+      };
+    }
   } catch (error) {
     generationError = error;
   } finally {
@@ -729,14 +746,27 @@ export async function runSafetyGate(input: SafetyGateInput): Promise<SafetyGateR
   const moderationModel = process.env.AI_MODERATION_MODEL;
   const apiKey = process.env.AI_MODERATION_API_KEY ?? process.env.AI_API_KEY;
 
-  if (!moderationUrl) {
-    throw new Error("AI_MODERATION_URL is not set for worker safety gate");
-  }
-  if (!moderationModel) {
-    throw new Error("AI_MODERATION_MODEL is not set for worker safety gate");
-  }
-  if (!apiKey) {
-    throw new Error("AI_MODERATION_API_KEY (or AI_API_KEY) is not set for worker safety gate");
+  if (!moderationUrl || !moderationModel || !apiKey) {
+    const mergedFlags = new Set<string>(input.safetyFlags.map(toSafeSignal).filter(Boolean));
+    mergedFlags.add("moderation:provider_unavailable");
+    if (!moderationUrl) mergedFlags.add("moderation:missing_url");
+    if (!moderationModel) mergedFlags.add("moderation:missing_model");
+    if (!apiKey) mergedFlags.add("moderation:missing_api_key");
+
+    return {
+      riskScore: 0.92,
+      riskLevel: "high",
+      safetyFlags: Array.from(mergedFlags).slice(0, 12),
+      rationale:
+        "Safety provider configuration missing; forcing high-risk manual review fallback.",
+      moderationTelemetry: {
+        providerAttempts: 0,
+        providerRetries: 0,
+        providerStatusCode: null,
+        providerUsedRetryAfter: false,
+        model: moderationModel ?? "fallback-local"
+      }
+    };
   }
 
   const timeoutMs = parsePositiveIntOrDefault(
