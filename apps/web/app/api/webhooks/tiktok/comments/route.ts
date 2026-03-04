@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConvexServerClient } from "../../../_lib/convexServer";
+import {
+  createWebhookObservabilityContext,
+  logWebhookCompleted,
+  logWebhookFailed
+} from "../../../_lib/webhookObservability";
 import { startCommentWorkflow } from "../../../_lib/temporal";
 import { verifyTiktokWebhookSignature } from "../../../_lib/webhookSignatures";
 
@@ -7,6 +12,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  const observability = createWebhookObservabilityContext({
+    provider: "tiktok",
+    route: "/api/webhooks/tiktok/comments",
+    method: "POST"
+  });
+
   try {
     const rawBody = await request.text();
     const verification = verifyTiktokWebhookSignature({
@@ -22,6 +33,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (!verification.ok) {
+      logWebhookFailed(observability, {
+        statusCode: verification.status,
+        errorCode: "tiktok_signature_verification_failed",
+        errorMessage: verification.error
+      });
       return NextResponse.json(
         { ok: false, error: verification.error },
         { status: verification.status }
@@ -59,16 +75,26 @@ export async function POST(request: NextRequest) {
       } as never
     )) as { commentId: string; created?: boolean };
 
-    if (ingestion.created ?? true) {
+    const workflowStarted = ingestion.created ?? true;
+    if (workflowStarted) {
       await startCommentWorkflow({
         accountId: body.accountId,
         commentId: ingestion.commentId
       });
     }
 
+    logWebhookCompleted(observability, {
+      accountId: body.accountId,
+      workflowStarted
+    });
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    logWebhookFailed(observability, {
+      statusCode: 500,
+      errorCode: "tiktok_webhook_processing_failed",
+      errorMessage: message
+    });
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

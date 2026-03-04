@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConvexServerClient } from "../../_lib/convexServer";
+import {
+  createWebhookObservabilityContext,
+  logWebhookCompleted,
+  logWebhookFailed,
+  logWebhookIgnored
+} from "../../_lib/webhookObservability";
 import Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -20,23 +26,35 @@ function mapSubscriptionStatusToBilling(
 }
 
 export async function POST(request: NextRequest) {
+  const observability = createWebhookObservabilityContext({
+    provider: "stripe",
+    route: "/api/webhooks/stripe",
+    method: "POST"
+  });
+
   try {
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
     if (!stripeSecretKey || !webhookSecret) {
-      return NextResponse.json(
-        { ok: false, error: "Missing Stripe webhook environment variables" },
-        { status: 500 }
-      );
+      const errorMessage = "Missing Stripe webhook environment variables";
+      logWebhookFailed(observability, {
+        statusCode: 500,
+        errorCode: "stripe_webhook_env_missing",
+        errorMessage
+      });
+      return NextResponse.json({ ok: false, error: errorMessage }, { status: 500 });
     }
 
     const signature = request.headers.get("stripe-signature");
     if (!signature) {
-      return NextResponse.json(
-        { ok: false, error: "Missing Stripe signature header" },
-        { status: 400 }
-      );
+      const errorMessage = "Missing Stripe signature header";
+      logWebhookFailed(observability, {
+        statusCode: 400,
+        errorCode: "stripe_signature_missing",
+        errorMessage
+      });
+      return NextResponse.json({ ok: false, error: errorMessage }, { status: 400 });
     }
 
     const stripe = new Stripe(stripeSecretKey);
@@ -48,6 +66,11 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Invalid Stripe signature";
+      logWebhookFailed(observability, {
+        statusCode: 400,
+        errorCode: "stripe_signature_invalid",
+        errorMessage: message
+      });
       return NextResponse.json({ ok: false, error: message }, { status: 400 });
     }
 
@@ -119,10 +142,16 @@ export async function POST(request: NextRequest) {
         break;
       }
       default:
+        logWebhookIgnored(observability, {
+          eventType: event.type
+        });
         return NextResponse.json({ ok: true, ignored: true, type: event.type });
     }
 
     if (!planType || !billingStatus) {
+      logWebhookIgnored(observability, {
+        eventType: event.type
+      });
       return NextResponse.json({ ok: true, ignored: true, type: event.type });
     }
 
@@ -145,6 +174,11 @@ export async function POST(request: NextRequest) {
       } as never
     );
 
+    logWebhookCompleted(observability, {
+      accountId,
+      eventType: event.type
+    });
+
     return NextResponse.json({
       ok: true,
       processed: true,
@@ -152,6 +186,11 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    logWebhookFailed(observability, {
+      statusCode: 500,
+      errorCode: "stripe_webhook_processing_failed",
+      errorMessage: message
+    });
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
