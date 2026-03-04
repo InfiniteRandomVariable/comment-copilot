@@ -17,7 +17,7 @@
 | 1 | PASS | `pnpm ci:check`, `pnpm verify:phase-boundary` | CI workflow logs + retained JUnit artifacts | Approved | CI gate established and stable. |
 | 2 | PENDING | `pnpm ci:check`, observability verification checks | Pending | Pending | Error tracking/latency/alerts partially implemented. |
 | 3 | PENDING | `pnpm ci:check`, incident runbook walkthrough checks | Pending | Pending | Runbooks exist but not fully completed/rehearsed. |
-| 4 | PENDING | `pnpm ci:check`, deploy checklist dry-run checks | Pending | Pending | Unified production checklist not finalized. |
+| 4 | PENDING | `pnpm ci:check`, deploy checklist dry-run checks | `docs/ops/production-deploy-checklist.md` (added), dry-run evidence pending | Pending | Unified production checklist added for this PR chunk; dry-run and rollback rehearsal evidence still pending. |
 
 ## Exceptions
 
