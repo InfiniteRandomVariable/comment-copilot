@@ -16,7 +16,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 1 | PASS | `pnpm ci:check`, `pnpm verify:phase-boundary` | CI workflow logs + retained JUnit artifacts | Approved | CI gate established and stable. |
 | 2 | PENDING | `pnpm ci:check`, observability verification checks | Pending | Pending | Error tracking/latency/alerts partially implemented. |
-| 3 | PENDING | `pnpm ci:check`, incident runbook walkthrough checks | Pending | Pending | Runbooks exist but not fully completed/rehearsed. |
+| 3 | PENDING | `pnpm ci:check`, incident runbook walkthrough checks | `docs/ops/provider-outage-runbook.md` (added), walkthrough evidence pending | Pending | Provider outage runbook completed for this PR chunk; webhook replay + token/billing runbooks and walkthrough rehearsal remain. |
 | 4 | PENDING | `pnpm ci:check`, deploy checklist dry-run checks | Pending | Pending | Unified production checklist not finalized. |
 
 ## Exceptions
