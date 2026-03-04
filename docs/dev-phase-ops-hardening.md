@@ -115,6 +115,7 @@ Stage 1 exits only when all are true:
 - `docs/ops/webhook-replay-runbook.md`
 - `docs/ops/provider-outage-runbook.md`
 - `docs/ops/token-billing-incident-runbook.md`
+- `docs/ops/incident-triage-escalation-flow.md`
 - `docs/ops/production-deploy-checklist.md`
 - Observability integration/config docs (provider-specific) and verification notes.
 
@@ -123,7 +124,7 @@ Stage 1 exits only when all are true:
 - Stage Status: In Progress
 - Item 1 (CI gate): Done | Tests Passed: Yes | Evidence Linked: Yes | Owner Signoff: Yes
 - Item 2 (observability): In Progress | Tests Passed: Partial | Evidence Linked: Partial | Owner Signoff: No
-- Item 3 (incident runbooks): In Progress | Tests Passed: No | Evidence Linked: Partial | Owner Signoff: No
+- Item 3 (incident runbooks): In Progress | Tests Passed: Partial | Evidence Linked: Partial | Owner Signoff: No
 - Item 4 (deploy/env checklist): In Progress | Tests Passed: No | Evidence Linked: No | Owner Signoff: No
 
 ## Deferred Work
