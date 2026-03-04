@@ -4,20 +4,20 @@
 
 - Stage ID: stage-1
 - Boundary Doc: docs/dev-phase-ops-hardening.md
-- Stage Status: In Progress
-- Exit Gate Approved: No
-- Owner: TBD
-- Overall Signoff: Pending
+- Stage Status: Done
+- Exit Gate Approved: Yes
+- Owner: Kevin Lau
+- Overall Signoff: Approved
 - Last Updated: 2026-03-04
 
 ## Scope Item Evidence
 
 | Item | Pass/Fail | Required Tests | Artifacts/Links | Owner Signoff | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 1 | PASS | `pnpm ci:check`, `pnpm verify:phase-boundary` | CI workflow logs + retained JUnit artifacts | Approved | CI gate established and stable. |
-| 2 | PENDING | `pnpm ci:check`, observability verification checks | Pending | Pending | Error tracking/latency/alerts partially implemented. |
-| 3 | PENDING | `pnpm ci:check`, incident runbook walkthrough checks | Pending | Pending | Runbooks exist but not fully completed/rehearsed. |
-| 4 | PENDING | `pnpm ci:check`, deploy checklist dry-run checks | Pending | Pending | Unified production checklist not finalized. |
+| 1 | PASS | `pnpm ci:check`, `pnpm verify:phase-boundary` | CI workflow logs + retained JUnit artifacts | Approved | CI workflows now avoid conflicting pnpm pins and avoid unresolved cache-dependency paths (repo has no tracked lockfile), restoring gate execution reliability. |
+| 2 | PASS | `pnpm ci:check`, `pnpm --filter @copilot/web test:webhooks:e2e:ci`, `node scripts/report-webhook-latency.mjs /tmp/stage1_item2_webhook_observability.log`, `pnpm exec convex dev --once --typecheck disable --tail-logs disable`, `APP_URL=http://localhost:3100 pnpm smoke:stripe:webhook` | `apps/web/app/api/_lib/webhookObservability.ts`; `apps/web/app/api/_lib/errorTracking.ts`; `scripts/report-webhook-latency.mjs`; `apps/web/tests/webhooks.e2e.integration.test.ts`; `apps/web/test-results/webhooks.e2e.junit.xml`; `/tmp/stage1_item2_webhook_observability.log`; `/tmp/stage1_item2_webhook_latency_report.txt`; `/tmp/stage1_item2_convex_dev_once_20260304.log`; `/tmp/stage1_item2_stripe_observability_20260304/dev-web.log`; `/tmp/stage1_item2_stripe_observability_20260304/stripe-smoke.log`; `/tmp/stage1_item2_stripe_observability_20260304/webhook-latency-report.txt` | Approved | Structured webhook latency/failure logs plus alert-routing metadata are emitted for Instagram/TikTok/Stripe; unexpected webhook failures forward to a configurable external error-tracking sink. Convex schema compatibility for `notificationEvents.eventType="webhook_processing_failed"` is validated, and live Stripe-route observability evidence is recorded. Owner signoff approved on 2026-03-04. |
+| 3 | PASS | `pnpm verify:phase-boundary`, `pnpm ci:check`, incident runbook walkthrough checks | `docs/ops/webhook-replay-runbook.md`; `docs/ops/provider-outage-runbook.md`; `docs/ops/token-billing-incident-runbook.md`; `docs/ops/incident-triage-escalation-flow.md`; `docs/ops/incident-runbook-exercise-2026-03-04.md` | Approved | Runbook set and rehearsal evidence completed with rehearsal artifacts recorded. Owner signoff approved on 2026-03-04. |
+| 4 | PASS | `pnpm verify:phase-boundary`, `pnpm ci:check`, `pnpm verify:deploy:checklist`, `pnpm rehearse:deploy:rollback`, deploy checklist dry-run checks | `docs/ops/production-deploy-checklist.md`; `docs/ops/deploy-checklist-dry-run-2026-03-04.md`; `scripts/verify-deploy-checklist.sh`; `scripts/rehearse-deploy-rollback.sh`; `/tmp/stage1_item4_verify_local`; `/tmp/stage1_item4_rehearse_local` | Approved | Deploy checklist verification and rollback rehearsal commands passed with captured artifacts, including Convex follow-up resolution evidence. Owner signoff approved on 2026-03-04. |
 
 ## Exceptions
 

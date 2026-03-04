@@ -66,16 +66,22 @@ function createPostRequest(args: {
 }
 
 describe("Webhook Ingestion E2E Integration", () => {
+  const originalFetch = globalThis.fetch;
+
   beforeEach(() => {
     vi.clearAllMocks();
     hoisted.startCommentWorkflow.mockReset();
     delete process.env.INSTAGRAM_WEBHOOK_SECRET;
     delete process.env.TIKTOK_WEBHOOK_SECRET;
+    delete process.env.ERROR_TRACKING_WEBHOOK_URL;
+    globalThis.fetch = originalFetch;
   });
 
   afterEach(() => {
     delete process.env.INSTAGRAM_WEBHOOK_SECRET;
     delete process.env.TIKTOK_WEBHOOK_SECRET;
+    delete process.env.ERROR_TRACKING_WEBHOOK_URL;
+    globalThis.fetch = originalFetch;
   });
 
   it("ingests instagram webhook and triggers workflow when signature is valid", async () => {
@@ -327,5 +333,160 @@ describe("Webhook Ingestion E2E Integration", () => {
     assert.deepEqual(await response.json(), { ok: true });
     assert.equal(mutationCalls.length, 1);
     assert.equal(hoisted.startCommentWorkflow.mock.calls.length, 0);
+  });
+  it("reports tiktok processing failures to external error tracking webhook", async () => {
+    const payload = {
+      accountId: "acc_tt_err_1",
+      platformCommentId: "tt_comment_err_1",
+      platformPostId: "tt_post_err_1",
+      commenterPlatformId: "tt_user_err_1",
+      text: "trigger failure"
+    };
+    const rawBody = JSON.stringify(payload);
+    const requestTimestamp = "1710000000";
+    process.env.TIKTOK_WEBHOOK_SECRET = "tiktok_webhook_secret";
+    process.env.ERROR_TRACKING_WEBHOOK_URL = "https://errors.example.test/ingest";
+
+    const { client, mutationCalls } = createMockClient({
+      mutation: async (fn) => {
+        if (fn === "comments:ingestPlatformComment") {
+          return { commentId: "convex_comment_tt_err_1" };
+        }
+        return null;
+      }
+    });
+    hoisted.client = client as never;
+    hoisted.startCommentWorkflow.mockRejectedValue(new Error("workflow boom"));
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("ok", {
+        status: 202
+      })
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const response = await postTiktokWebhook(
+      createPostRequest({
+        url: "https://app.local/api/webhooks/tiktok/comments",
+        rawBody,
+        headers: {
+          "x-tiktok-signature": signTiktokPayload(
+            rawBody,
+            process.env.TIKTOK_WEBHOOK_SECRET,
+            requestTimestamp
+          ),
+          "x-tiktok-request-timestamp": requestTimestamp
+        }
+      }) as never
+    );
+
+    assert.equal(response.status, 500);
+    assert.deepEqual(await response.json(), {
+      ok: false,
+      error: "workflow boom"
+    });
+    assert.equal(mutationCalls.length, 1);
+    assert.equal(fetchMock.mock.calls.length, 1);
+    assert.equal(fetchMock.mock.calls[0]?.[0], process.env.ERROR_TRACKING_WEBHOOK_URL);
+
+    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(requestInit.body)) as {
+      source: string;
+      category: string;
+      message: string;
+      metadata: { route: string; accountId?: string; statusCode: number };
+    };
+    assert.equal(body.source, "webhook:tiktok_comments");
+    assert.equal(body.category, "webhook_processing_failed");
+    assert.equal(body.message, "workflow boom");
+    assert.equal(body.metadata.route, "/api/webhooks/tiktok/comments");
+    assert.equal(body.metadata.accountId, "acc_tt_err_1");
+    assert.equal(body.metadata.statusCode, 500);
+  });
+
+});
+
+describe("Webhook Error Tracking Integration", () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hoisted.startCommentWorkflow.mockReset();
+    delete process.env.INSTAGRAM_WEBHOOK_SECRET;
+    delete process.env.ERROR_TRACKING_WEBHOOK_URL;
+    globalThis.fetch = originalFetch;
+  });
+
+  afterEach(() => {
+    delete process.env.INSTAGRAM_WEBHOOK_SECRET;
+    delete process.env.ERROR_TRACKING_WEBHOOK_URL;
+    globalThis.fetch = originalFetch;
+  });
+
+  it("reports instagram processing failures to external error tracking webhook", async () => {
+    const payload = {
+      accountId: "acc_ig_err_1",
+      platformCommentId: "ig_comment_err_1",
+      platformPostId: "ig_post_err_1",
+      commenterPlatformId: "ig_user_err_1",
+      text: "trigger failure"
+    };
+    const rawBody = JSON.stringify(payload);
+    process.env.INSTAGRAM_WEBHOOK_SECRET = "ig_webhook_secret";
+    process.env.ERROR_TRACKING_WEBHOOK_URL = "https://errors.example.test/ingest";
+
+    const { client, mutationCalls } = createMockClient({
+      mutation: async (fn) => {
+        if (fn === "comments:ingestPlatformComment") {
+          return { commentId: "convex_comment_ig_err_1" };
+        }
+        return null;
+      }
+    });
+    hoisted.client = client as never;
+    hoisted.startCommentWorkflow.mockRejectedValue(new Error("instagram workflow boom"));
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("ok", {
+        status: 202
+      })
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const response = await postInstagramWebhook(
+      createPostRequest({
+        url: "https://app.local/api/webhooks/instagram/comments",
+        rawBody,
+        headers: {
+          "x-hub-signature-256": signInstagramPayload(
+            rawBody,
+            process.env.INSTAGRAM_WEBHOOK_SECRET
+          )
+        }
+      }) as never
+    );
+
+    assert.equal(response.status, 500);
+    assert.deepEqual(await response.json(), {
+      ok: false,
+      error: "instagram workflow boom"
+    });
+    assert.equal(mutationCalls.length, 1);
+    assert.equal(fetchMock.mock.calls.length, 1);
+    assert.equal(fetchMock.mock.calls[0]?.[0], process.env.ERROR_TRACKING_WEBHOOK_URL);
+
+    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(requestInit.body)) as {
+      source: string;
+      category: string;
+      message: string;
+      metadata: { route: string; accountId?: string; statusCode: number };
+    };
+    assert.equal(body.source, "webhook:instagram_comments");
+    assert.equal(body.category, "webhook_processing_failed");
+    assert.equal(body.message, "instagram workflow boom");
+    assert.equal(body.metadata.route, "/api/webhooks/instagram/comments");
+    assert.equal(body.metadata.accountId, "acc_ig_err_1");
+    assert.equal(body.metadata.statusCode, 500);
   });
 });

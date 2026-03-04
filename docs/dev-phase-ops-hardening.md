@@ -41,6 +41,7 @@ All autonomous coding-agent work must stay within this boundary.
 - Work only on Stage 1 scope items.
 - Any request outside this phase must be rejected/deferred and logged under "Deferred Work".
 - No task outside Stage 1 is allowed until all mandatory Stage 1 tests pass and evidence is recorded.
+- Follow the global Execution Continuity rule in `docs/dev-phase-policy.md`.
 - Ship in small, reviewable PR-sized increments.
 - Every increment must include:
   - docs updates,
@@ -120,11 +121,11 @@ Stage 1 exits only when all are true:
 
 ## Status Tracker
 
-- Stage Status: In Progress
+- Stage Status: Done
 - Item 1 (CI gate): Done | Tests Passed: Yes | Evidence Linked: Yes | Owner Signoff: Yes
-- Item 2 (observability): In Progress | Tests Passed: Partial | Evidence Linked: Partial | Owner Signoff: No
-- Item 3 (incident runbooks): In Progress | Tests Passed: No | Evidence Linked: Partial | Owner Signoff: No
-- Item 4 (deploy/env checklist): In Progress | Tests Passed: No | Evidence Linked: No | Owner Signoff: No
+- Item 2 (observability): Done | Tests Passed: Yes | Evidence Linked: Yes | Owner Signoff: Yes
+- Item 3 (incident runbooks): Done | Tests Passed: Yes | Evidence Linked: Yes | Owner Signoff: Yes
+- Item 4 (deploy/env checklist): Done | Tests Passed: Yes | Evidence Linked: Yes | Owner Signoff: Yes
 
 ## Deferred Work
 

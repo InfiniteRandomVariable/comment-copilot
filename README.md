@@ -44,6 +44,12 @@ This project is intentionally isolated:
 - Stage 3 boundary (controlled beta): `docs/dev-phase-stage-3-controlled-beta.md`
 - Stage 4 boundary (scale launch): `docs/dev-phase-stage-4-scale-launch.md`
 - Stage evidence records: `docs/ops/stage-1-evidence.md`, `docs/ops/stage-2-evidence.md`, `docs/ops/stage-3-evidence.md`, `docs/ops/stage-4-evidence.md`
+- Webhook replay runbook: `docs/ops/webhook-replay-runbook.md`
+- Provider outage runbook: `docs/ops/provider-outage-runbook.md`
+- Token and billing incident runbook: `docs/ops/token-billing-incident-runbook.md`
+- Incident triage and escalation flow: `docs/ops/incident-triage-escalation-flow.md`
+- Production deploy checklist: `docs/ops/production-deploy-checklist.md`
+- Deploy checklist dry-run evidence (2026-03-04): `docs/ops/deploy-checklist-dry-run-2026-03-04.md`
 
 ## Testing
 

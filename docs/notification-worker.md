@@ -1,6 +1,6 @@
 # Notification Worker
 
-The notification worker sends email alerts for token thresholds (`8k warning`, `10k cap reached`) by consuming `notificationEvents`.
+The notification worker sends email alerts for token thresholds (`8k warning`, `10k cap reached`) and webhook failures (`webhook_processing_failed`) by consuming `notificationEvents`.
 
 ## Start
 
