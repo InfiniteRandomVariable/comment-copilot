@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConvexServerClient } from "../../../_lib/convexServer";
 import { startCommentWorkflow } from "../../../_lib/temporal";
+import {
+  enqueueWebhookFailureAlert,
+  extractAccountIdFromRawBody
+} from "../../../_lib/webhookFailureAlert";
 import { verifyInstagramWebhookSignature } from "../../../_lib/webhookSignatures";
 
 export const runtime = "nodejs";
@@ -33,8 +37,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let rawBody = "";
+  let accountId: string | undefined;
+
   try {
-    const rawBody = await request.text();
+    rawBody = await request.text();
     const verification = verifyInstagramWebhookSignature({
       rawBody,
       signatureHeader: request.headers.get("x-hub-signature-256"),
@@ -61,6 +68,7 @@ export async function POST(request: NextRequest) {
       commenterLatestVideoId?: string;
       commenterLatestVideoTitle?: string;
     };
+    accountId = body.accountId;
     const client = getConvexServerClient();
 
     const ingestion = (await client.mutation(
@@ -90,6 +98,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    await enqueueWebhookFailureAlert({
+      platform: "instagram",
+      route: "/api/webhooks/instagram/comments",
+      accountId: accountId ?? extractAccountIdFromRawBody(rawBody),
+      error: message,
+      statusCode: 500
+    });
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

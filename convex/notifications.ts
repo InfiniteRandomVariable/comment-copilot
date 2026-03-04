@@ -2,6 +2,13 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { nowTs } from "./utils";
 
+function utcMonthKey(ts: number) {
+  const d = new Date(ts);
+  const year = d.getUTCFullYear();
+  const month = `${d.getUTCMonth() + 1}`.padStart(2, "0");
+  return `${year}-${month}`;
+}
+
 export const listPendingNotificationEvents = query({
   args: {
     accountId: v.optional(v.id("accounts")),
@@ -29,16 +36,24 @@ export const listPendingNotificationEvents = query({
 
 export const claimNextPendingNotification = mutation({
   args: {
+    accountId: v.optional(v.id("accounts")),
     maxAttempts: v.optional(v.number())
   },
   handler: async (ctx, args) => {
     const maxAttempts = Math.max(1, Math.min(args.maxAttempts ?? 5, 10));
 
-    const next = await ctx.db
-      .query("notificationEvents")
-      .withIndex("by_status_created", (q) => q.eq("status", "pending"))
-      .order("asc")
-      .first();
+    const next = args.accountId
+      ? await ctx.db
+          .query("notificationEvents")
+          .withIndex("by_account", (q) => q.eq("accountId", args.accountId!))
+          .filter((q) => q.eq(q.field("status"), "pending"))
+          .order("asc")
+          .first()
+      : await ctx.db
+          .query("notificationEvents")
+          .withIndex("by_status_created", (q) => q.eq("status", "pending"))
+          .order("asc")
+          .first();
 
     if (!next) {
       return null;
@@ -114,6 +129,38 @@ export const enqueueNotificationEvent = mutation({
       status: "pending",
       attempts: 0,
       payloadJson: args.payloadJson ?? "{}",
+      createdAt: ts,
+      updatedAt: ts
+    });
+  }
+});
+
+export const enqueueWebhookFailureAlert = mutation({
+  args: {
+    accountId: v.id("accounts"),
+    platform: v.union(v.literal("instagram"), v.literal("tiktok"), v.literal("stripe")),
+    route: v.string(),
+    error: v.string(),
+    statusCode: v.optional(v.number())
+  },
+  handler: async (ctx, args) => {
+    const ts = nowTs();
+    const monthKey = utcMonthKey(ts);
+    const payloadJson = JSON.stringify({
+      platform: args.platform,
+      route: args.route,
+      error: args.error,
+      statusCode: args.statusCode ?? 500,
+      detectedAt: ts
+    });
+
+    return ctx.db.insert("notificationEvents", {
+      accountId: args.accountId,
+      monthKey,
+      eventType: "webhook_processing_failed",
+      status: "pending",
+      attempts: 0,
+      payloadJson,
       createdAt: ts,
       updatedAt: ts
     });

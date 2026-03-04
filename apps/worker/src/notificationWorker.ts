@@ -19,7 +19,8 @@ type ClaimedNotification = {
     | "token_warning_threshold"
     | "token_free_tier_cap_reached"
     | "token_40k_warning"
-    | "token_50k_cap_reached";
+    | "token_50k_cap_reached"
+    | "webhook_processing_failed";
   payloadJson: string;
   recipientEmail: string;
   recipientName?: string;
@@ -62,6 +63,30 @@ function buildMessage(event: ClaimedNotification) {
   );
   const hardCap = asNumberOrDefault(payload.includedTokens, DEFAULT_HARD_CAP);
   const projectedUsage = payload.projectedUsage ?? "n/a";
+  const platform = String(payload.platform ?? "unknown");
+  const route = String(payload.route ?? "unknown");
+  const errorMessage = String(payload.error ?? "unknown_error");
+  const statusCode = asNumberOrDefault(payload.statusCode, 500);
+
+  if (event.eventType === "webhook_processing_failed") {
+    return {
+      subject: `Webhook failure alert: ${platform} (${statusCode})`,
+      text: [
+        `Hi ${event.recipientName ?? "there"},`,
+        "",
+        "A webhook processing failure was detected.",
+        `Platform: ${platform}`,
+        `Route: ${route}`,
+        `HTTP status: ${statusCode}`,
+        `Month: ${event.monthKey}`,
+        "",
+        `Error: ${errorMessage}`,
+        "",
+        "Action: inspect webhook logs and replay/recover according to incident runbook.",
+        ""
+      ].join("\n")
+    };
+  }
 
   if (
     event.eventType === "token_warning_threshold" ||

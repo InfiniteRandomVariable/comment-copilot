@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConvexServerClient } from "../../../_lib/convexServer";
 import { startCommentWorkflow } from "../../../_lib/temporal";
+import {
+  enqueueWebhookFailureAlert,
+  extractAccountIdFromRawBody
+} from "../../../_lib/webhookFailureAlert";
 import { verifyTiktokWebhookSignature } from "../../../_lib/webhookSignatures";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  let rawBody = "";
+  let accountId: string | undefined;
+
   try {
-    const rawBody = await request.text();
+    rawBody = await request.text();
     const verification = verifyTiktokWebhookSignature({
       rawBody,
       signatureHeader:
@@ -40,6 +47,7 @@ export async function POST(request: NextRequest) {
       commenterLatestVideoId?: string;
       commenterLatestVideoTitle?: string;
     };
+    accountId = body.accountId;
     const client = getConvexServerClient();
 
     const ingestion = (await client.mutation(
@@ -69,6 +77,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    await enqueueWebhookFailureAlert({
+      platform: "tiktok",
+      route: "/api/webhooks/tiktok/comments",
+      accountId: accountId ?? extractAccountIdFromRawBody(rawBody),
+      error: message,
+      statusCode: 500
+    });
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
