@@ -21,6 +21,7 @@
 - Temporal workflow trigger from webhook ingestion.
 - Webhook workflow orchestration mode is env-selectable: `temporal` (default) or `inline` (runs workflow stages in-process, with per-comment in-flight dedupe).
 - Settings page now displays the active orchestration runtime mode and raw env value for quick ops verification, including invalid-value fallback warnings.
+- Settings page now includes per-account autopilot controls with editable thresholds, explicit kill switch toggle, owner-account validation, and persistence/error status messaging.
 - Added `GET /api/health/orchestration` endpoint for runtime mode/source diagnostics without opening UI.
 - Orchestration health endpoint now also reports `workerRequired`, resolved Temporal config, default-flag indicators, and warnings.
 - Orchestration mode/state resolution is centralized in a shared runtime helper used by settings UI, health endpoint, and startup logging.

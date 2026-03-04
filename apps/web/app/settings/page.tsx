@@ -4,10 +4,12 @@ import { getConvexServerClient } from "../api/_lib/convexServer";
 import { getOrchestrationRuntimeDetails } from "../api/_lib/orchestrationRuntime";
 import {
   disconnectSocialAccessAction,
-  refreshSocialTokenAction
+  refreshSocialTokenAction,
+  updateAutopilotSettingsAction
 } from "./actions";
 import { RefreshTokenSubmit } from "../../components/refresh-token-submit";
 import { DisconnectAccessSubmit } from "../../components/disconnect-access-submit";
+import { SaveAutopilotSubmit } from "../../components/save-autopilot-submit";
 
 type Platform = "instagram" | "tiktok";
 
@@ -21,6 +23,13 @@ type OwnerAccount = {
 
 type SocialCredential = {
   tokenExpiresAt?: number;
+};
+
+type AutopilotSettings = {
+  enabled: boolean;
+  maxRiskScore: number;
+  minConfidenceScore: number;
+  updatedAt: number;
 };
 
 async function getAppOrigin() {
@@ -88,6 +97,10 @@ function formatExpiry(ts?: number) {
   }).format(new Date(ts));
 }
 
+function formatThreshold(value: number) {
+  return value.toFixed(2);
+}
+
 export default async function SettingsPage({
   searchParams
 }: {
@@ -98,6 +111,8 @@ export default async function SettingsPage({
     refresh_error?: string;
     disconnect?: string;
     disconnect_error?: string;
+    autopilot?: string;
+    autopilot_error?: string;
     platform?: string;
     accountId?: string;
   }>;
@@ -114,6 +129,7 @@ export default async function SettingsPage({
   let connectedData: Array<{
     account: OwnerAccount;
     credential: SocialCredential | null;
+    autopilotSettings: AutopilotSettings;
   }> = [];
 
   if (userId) {
@@ -130,11 +146,16 @@ export default async function SettingsPage({
 
       connectedData = await Promise.all(
         ownerAccounts.map(async (account) => {
-          const credential = (await client.query(
-            "socialAccounts:getByAccountId" as never,
-            { accountId: account._id } as never
-          )) as SocialCredential | null;
-          return { account, credential };
+          const [credential, autopilotSettings] = await Promise.all([
+            client.query("socialAccounts:getByAccountId" as never, {
+              accountId: account._id
+            } as never) as Promise<SocialCredential | null>,
+            client.query("autopilot:getAutopilotSettings" as never, {
+              accountId: account._id
+            } as never) as Promise<AutopilotSettings>
+          ]);
+
+          return { account, credential, autopilotSettings };
         })
       );
     }
@@ -179,7 +200,7 @@ export default async function SettingsPage({
           {orchestration.source === "default" ? " (default)" : ""}
         </p>
         <p style={{ margin: 0, color: "#59636e", fontSize: 13 }}>
-          Env <code>COMMENT_ORCHESTRATION_MODE</code>:{" "}
+          Env <code>COMMENT_ORCHESTRATION_MODE</code>: {" "}
           <code>{orchestration.rawMode ?? "(unset)"}</code>
         </p>
         <p style={{ marginBottom: 0, color: "#59636e", fontSize: 13 }}>
@@ -230,6 +251,16 @@ export default async function SettingsPage({
             Disconnect failed: {params.disconnect_error ?? "Unknown disconnect error"}
           </p>
         ) : null}
+        {params.autopilot === "updated" ? (
+          <p style={{ color: "#0a7d40" }}>
+            Autopilot settings saved for <strong>{params.accountId ?? "account"}</strong>.
+          </p>
+        ) : null}
+        {params.autopilot === "error" ? (
+          <p style={{ color: "#9f1239" }}>
+            Autopilot settings update failed: {params.autopilot_error ?? "Unknown update error"}
+          </p>
+        ) : null}
         {ownerUserId ? (
           <p style={{ marginTop: 0, color: "#59636e" }}>
             Owner user ID resolved: <code>{ownerUserId}</code>
@@ -272,7 +303,7 @@ export default async function SettingsPage({
           </p>
         ) : (
           <div className="grid" style={{ gap: 10 }}>
-            {connectedData.map(({ account, credential }) => (
+            {connectedData.map(({ account, credential, autopilotSettings }) => (
               <article
                 key={account._id}
                 style={{
@@ -290,6 +321,86 @@ export default async function SettingsPage({
                 <div style={{ fontSize: 13, color: "#59636e", marginTop: 4 }}>
                   token expiry: {formatExpiry(credential?.tokenExpiresAt)}
                 </div>
+
+                <form
+                  action={updateAutopilotSettingsAction}
+                  style={{
+                    marginTop: 12,
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #d8dedf",
+                    background: "#f8fbfc"
+                  }}
+                >
+                  <input type="hidden" name="accountId" value={account._id} />
+                  <div style={{ fontWeight: 600, marginBottom: 8 }}>Autopilot controls</div>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="checkbox"
+                      name="enabled"
+                      defaultChecked={autopilotSettings.enabled}
+                    />
+                    <span style={{ fontSize: 14 }}>
+                      Enable autopilot auto-send for this account
+                    </span>
+                  </label>
+                  <p style={{ marginTop: 6, marginBottom: 10, color: "#59636e", fontSize: 13 }}>
+                    Turn this off to activate the kill switch and force all new drafts into
+                    manual review.
+                  </p>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+                      gap: 8,
+                      marginBottom: 10
+                    }}
+                  >
+                    <label style={{ display: "grid", gap: 4 }}>
+                      <span style={{ fontSize: 12, color: "#59636e" }}>Max risk score (0-1)</span>
+                      <input
+                        type="number"
+                        name="maxRiskScore"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        required
+                        defaultValue={formatThreshold(autopilotSettings.maxRiskScore)}
+                        style={{
+                          border: "1px solid #c9d2d4",
+                          borderRadius: 8,
+                          padding: "8px 10px"
+                        }}
+                      />
+                    </label>
+                    <label style={{ display: "grid", gap: 4 }}>
+                      <span style={{ fontSize: 12, color: "#59636e" }}>
+                        Min confidence score (0-1)
+                      </span>
+                      <input
+                        type="number"
+                        name="minConfidenceScore"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        required
+                        defaultValue={formatThreshold(autopilotSettings.minConfidenceScore)}
+                        style={{
+                          border: "1px solid #c9d2d4",
+                          borderRadius: 8,
+                          padding: "8px 10px"
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <SaveAutopilotSubmit className="btn secondary" />
+                    <span style={{ fontSize: 12, color: "#59636e" }}>
+                      Last updated: {formatExpiry(autopilotSettings.updatedAt)}
+                    </span>
+                  </div>
+                </form>
+
                 {credential ? (
                   <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                     <form action={refreshSocialTokenAction} style={{ display: "inline-block" }}>
@@ -318,11 +429,11 @@ export default async function SettingsPage({
       </section>
 
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Default thresholds</h2>
+        <h2 style={{ marginTop: 0 }}>Autopilot defaults</h2>
         <ul>
-          <li>enabled: true</li>
-          <li>maxRiskScore: 0.25</li>
-          <li>minConfidenceScore: 0.80</li>
+          <li>maxRiskScore default: 0.25</li>
+          <li>minConfidenceScore default: 0.80</li>
+          <li>If no per-account settings exist, these defaults are used.</li>
         </ul>
       </section>
       <section className="card">

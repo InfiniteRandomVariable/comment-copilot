@@ -1,9 +1,15 @@
 "use server";
 
+import { auth } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getConvexServerClient } from "../api/_lib/convexServer";
 
 type Platform = "instagram" | "tiktok";
+
+type OwnerAccount = {
+  _id: string;
+};
 
 function getRequiredValue(formData: FormData, key: string) {
   const raw = formData.get(key);
@@ -12,6 +18,18 @@ function getRequiredValue(formData: FormData, key: string) {
     throw new Error(`Missing required field: ${key}`);
   }
   return value;
+}
+
+function parseThreshold(formData: FormData, key: string) {
+  const value = getRequiredValue(formData, key);
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${key} must be a number between 0 and 1`);
+  }
+  if (parsed < 0 || parsed > 1) {
+    throw new Error(`${key} must be between 0 and 1`);
+  }
+  return parsed;
 }
 
 async function getAppOrigin() {
@@ -29,6 +47,63 @@ function normalizePlatform(value: string): Platform {
     return value;
   }
   throw new Error(`Unsupported platform: ${value}`);
+}
+
+export async function updateAutopilotSettingsAction(formData: FormData) {
+  let updateStatus = "updated";
+  let errorMessage: string | undefined;
+  let accountId = "";
+
+  try {
+    accountId = getRequiredValue(formData, "accountId");
+    const enabled = formData.get("enabled") === "on";
+    const maxRiskScore = parseThreshold(formData, "maxRiskScore");
+    const minConfidenceScore = parseThreshold(formData, "minConfidenceScore");
+
+    const { userId } = await auth();
+    if (!userId) {
+      throw new Error("You must be signed in to update autopilot settings");
+    }
+
+    const client = getConvexServerClient();
+    const ownerUser = (await client.query("users:getByClerkUserId" as never, {
+      clerkUserId: userId
+    } as never)) as { _id: string } | null;
+
+    if (!ownerUser?._id) {
+      throw new Error("Owner user record not found for this session");
+    }
+
+    const ownerAccounts = (await client.query("accounts:listOwnerAccounts" as never, {
+      ownerUserId: ownerUser._id
+    } as never)) as OwnerAccount[];
+
+    if (!ownerAccounts.some((account) => account._id === accountId)) {
+      throw new Error("Selected account is not owned by the current user");
+    }
+
+    await client.mutation("autopilot:upsertAutopilotSettings" as never, {
+      accountId,
+      enabled,
+      maxRiskScore,
+      minConfidenceScore
+    } as never);
+  } catch (error) {
+    updateStatus = "error";
+    errorMessage =
+      error instanceof Error ? error.message : "Failed to update autopilot settings";
+  }
+
+  const params = new URLSearchParams();
+  params.set("autopilot", updateStatus);
+  if (accountId) {
+    params.set("accountId", accountId);
+  }
+  if (errorMessage) {
+    params.set("autopilot_error", errorMessage);
+  }
+
+  redirect(`/settings?${params.toString()}`);
 }
 
 export async function refreshSocialTokenAction(formData: FormData) {

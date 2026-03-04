@@ -14,7 +14,7 @@
 
 | Item | Pass/Fail | Required Tests | Artifacts/Links | Owner Signoff | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 1 | PENDING | `pnpm ci:check`, targeted operator UX validation | Pending | Pending | Not started. |
+| 1 | PENDING | `pnpm --filter @copilot/web test tests/settings.actions.integration.test.ts`; `pnpm verify:phase-boundary`; `pnpm ci:check` | `apps/web/app/settings/page.tsx`, `apps/web/app/settings/actions.ts`, `apps/web/tests/settings.actions.integration.test.ts` | Pending | Added per-account autopilot controls (threshold editing + explicit kill switch toggle) with ownership validation and save-state feedback. |
 | 2 | PENDING | `pnpm ci:check`, `pnpm test:web:inbox` | Pending | Pending | Not started. |
 | 3 | PENDING | `pnpm ci:check`, `pnpm test:web:telemetry` | Pending | Pending | Not started. |
 | 4 | PENDING | `pnpm ci:check`, account health integration validation | Pending | Pending | Not started. |
