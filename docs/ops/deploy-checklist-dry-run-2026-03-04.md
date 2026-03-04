@@ -38,13 +38,21 @@ ARTIFACT_DIR=/tmp/stage1_item4_deploy_rehearsal_20260304_v3 APP_URL=http://local
 - Automated rehearsal avoids broad `pkill` usage by managing process lifecycles via captured PIDs.
 - Post-rollback validations remained green.
 
-## Noted Risk During Optional Local Convex-Dev Rehearsal
+## Convex Schema Follow-Up (Resolved on 2026-03-04)
 
-A separate optional local `pnpm dev:convex` attempt failed with schema validation mismatch on existing `notificationEvents.eventType="webhook_processing_failed"` data:
+A previous optional local `pnpm dev:convex` rehearsal exposed a schema mismatch for existing `notificationEvents.eventType="webhook_processing_failed"` data (artifact: `/tmp/stage1_item4_deploy_dryrun_20260304/convex-dev.log`).
 
-- artifact: `/tmp/stage1_item4_deploy_dryrun_20260304/convex-dev.log`
+Follow-up fix validated with:
 
-This indicates local branch/schema drift relative to active data; deploy checklist now explicitly requires Convex compatibility checks as part of pre-deploy verification.
+```bash
+pnpm exec convex dev --once --typecheck disable --tail-logs disable
+```
+
+Validation artifact:
+
+- `/tmp/stage1_item2_convex_dev_once_20260304.log`
+
+Result: Convex deploy/prepare step now succeeds with persisted `webhook_processing_failed` notification events.
 
 ## Artifact Paths
 
@@ -87,4 +95,4 @@ Optional convex-dev rehearsal artifact:
 
 ## Conclusion
 
-Stage 1 Item 4 checklist and rollback rehearsal evidence are now documented, including consolidated deploy-checklist verification artifacts and automated rollback rehearsal artifacts. Owner signoff remains pending before Item 4 can be marked `Done`.
+Stage 1 Item 4 checklist and rollback rehearsal evidence are now documented, including consolidated deploy-checklist verification artifacts and automated rollback rehearsal artifacts. The prior Convex schema mismatch noted during optional rehearsal has been resolved and revalidated. Owner signoff remains pending before Item 4 can be marked `Done`.
