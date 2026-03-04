@@ -12,6 +12,14 @@
 - Provider outage/degraded dependency drill
 - Token/billing diagnostic drill
 
+## Walkthrough Status
+
+| Scenario | Runbook | Status | Evidence |
+| --- | --- | --- | --- |
+| Webhook replay | `docs/ops/webhook-replay-runbook.md` | PASS | `/tmp/stage1_item3_incident_runbook_exercise_20260304/tiktok-first-response.json`, `/tmp/stage1_item3_incident_runbook_exercise_20260304/tiktok-replay-response.json` |
+| Provider outage triage | `docs/ops/provider-outage-runbook.md` | PASS | `/tmp/stage1_item3_incident_runbook_exercise_20260304/orchestration-health.json`, `/tmp/stage1_item3_incident_runbook_exercise_20260304/stripe-smoke.log` |
+| Token/billing diagnostics | `docs/ops/token-billing-incident-runbook.md` | PASS | `/tmp/stage1_item3_incident_runbook_exercise_20260304/billing-usage-summary.json` |
+
 ## Commands Executed
 
 ```bash
