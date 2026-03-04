@@ -16,7 +16,7 @@ curl -sS http://localhost:3100/api/health/orchestration
 pnpm exec convex run devSeed:getFirstAccountId --typecheck disable --codegen disable
 APP_URL=http://localhost:3100 pnpm smoke:stripe:webhook
 ARTIFACT_DIR=/tmp/stage1_item4_deploy_checklist_verify_20260304 APP_URL=http://localhost:3100 VERIFY_CONVEX=0 pnpm verify:deploy:checklist
-ARTIFACT_DIR=/tmp/stage1_item4_deploy_rehearsal_20260304_v2 APP_URL=http://localhost:3100 pnpm rehearse:deploy:rollback
+ARTIFACT_DIR=/tmp/stage1_item4_deploy_rehearsal_20260304_v3 APP_URL=http://localhost:3100 pnpm rehearse:deploy:rollback
 ```
 
 ## Dry-Run Results
@@ -29,6 +29,7 @@ ARTIFACT_DIR=/tmp/stage1_item4_deploy_rehearsal_20260304_v2 APP_URL=http://local
 - Convex API reachability check succeeded (`devSeed:getFirstAccountId` returned account metadata).
 - Consolidated deploy-checklist verification passed with runtime checks (`verify:phase-boundary`, env sync, health, stripe smoke).
 - Automated rollback rehearsal script completed with PID-scoped web/worker restarts and successful post-restart health + smoke checks.
+- Re-running against a non-empty artifact directory fails fast unless `ALLOW_OVERWRITE=1` is set.
 
 ## Rollback Rehearsal Outcome
 
@@ -69,16 +70,16 @@ Consolidated deploy-checklist verification artifacts:
 
 Automated rollback rehearsal artifacts:
 
-- `/tmp/stage1_item4_deploy_rehearsal_20260304_v2/sync-web-env.log`
-- `/tmp/stage1_item4_deploy_rehearsal_20260304_v2/dev-web-1.log`
-- `/tmp/stage1_item4_deploy_rehearsal_20260304_v2/dev-web-2.log`
-- `/tmp/stage1_item4_deploy_rehearsal_20260304_v2/dev-notifications-1.log`
-- `/tmp/stage1_item4_deploy_rehearsal_20260304_v2/dev-notifications-2.log`
-- `/tmp/stage1_item4_deploy_rehearsal_20260304_v2/health-before.json`
-- `/tmp/stage1_item4_deploy_rehearsal_20260304_v2/health-after-web-restart.json`
-- `/tmp/stage1_item4_deploy_rehearsal_20260304_v2/stripe-smoke-before.log`
-- `/tmp/stage1_item4_deploy_rehearsal_20260304_v2/stripe-smoke-after-web-restart.log`
-- `/tmp/stage1_item4_deploy_rehearsal_20260304_v2/summary.txt`
+- `/tmp/stage1_item4_deploy_rehearsal_20260304_v3/sync-web-env.log`
+- `/tmp/stage1_item4_deploy_rehearsal_20260304_v3/dev-web-1.log`
+- `/tmp/stage1_item4_deploy_rehearsal_20260304_v3/dev-web-2.log`
+- `/tmp/stage1_item4_deploy_rehearsal_20260304_v3/dev-notifications-1.log`
+- `/tmp/stage1_item4_deploy_rehearsal_20260304_v3/dev-notifications-2.log`
+- `/tmp/stage1_item4_deploy_rehearsal_20260304_v3/health-before.json`
+- `/tmp/stage1_item4_deploy_rehearsal_20260304_v3/health-after-web-restart.json`
+- `/tmp/stage1_item4_deploy_rehearsal_20260304_v3/stripe-smoke-before.log`
+- `/tmp/stage1_item4_deploy_rehearsal_20260304_v3/stripe-smoke-after-web-restart.log`
+- `/tmp/stage1_item4_deploy_rehearsal_20260304_v3/summary.txt`
 
 Optional convex-dev rehearsal artifact:
 

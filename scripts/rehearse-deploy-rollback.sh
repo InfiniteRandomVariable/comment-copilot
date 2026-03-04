@@ -6,11 +6,17 @@ ARTIFACT_DIR="${ARTIFACT_DIR:-/tmp/comment_copilot_deploy_rehearsal}"
 WEB_START_TIMEOUT_SECS="${WEB_START_TIMEOUT_SECS:-90}"
 WORKER_START_TIMEOUT_SECS="${WORKER_START_TIMEOUT_SECS:-45}"
 WORKER_READY_PATTERN="${WORKER_READY_PATTERN:-worker started}"
+ALLOW_OVERWRITE="${ALLOW_OVERWRITE:-0}"
 
 WEB_PID=""
 WORKER_PID=""
 
 mkdir -p "$ARTIFACT_DIR"
+if [[ -n "$(find "$ARTIFACT_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]] && [[ "$ALLOW_OVERWRITE" != "1" ]]; then
+  echo "[deploy-rehearsal] artifact directory is not empty: $ARTIFACT_DIR"
+  echo "[deploy-rehearsal] set ALLOW_OVERWRITE=1 to reuse this directory"
+  exit 1
+fi
 
 stop_pid() {
   local pid="$1"
