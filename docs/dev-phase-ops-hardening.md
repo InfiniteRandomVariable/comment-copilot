@@ -125,7 +125,7 @@ Stage 1 exits only when all are true:
 - Item 1 (CI gate): Done | Tests Passed: Yes | Evidence Linked: Yes | Owner Signoff: Yes
 - Item 2 (observability): In Progress | Tests Passed: Yes | Evidence Linked: Yes | Owner Signoff: No
 - Item 3 (incident runbooks): In Progress | Tests Passed: Yes | Evidence Linked: Yes | Owner Signoff: No
-- Item 4 (deploy/env checklist): In Progress | Tests Passed: Partial | Evidence Linked: Yes | Owner Signoff: No
+- Item 4 (deploy/env checklist): In Progress | Tests Passed: Yes | Evidence Linked: Yes | Owner Signoff: No
 
 ## Deferred Work
 
