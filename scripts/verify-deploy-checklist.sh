@@ -16,12 +16,25 @@ pnpm sync:web:env | tee "$ARTIFACT_DIR/sync-web-env.log"
 
 if [[ "$VERIFY_RUNTIME" == "1" ]]; then
   HEALTH_URL="${APP_URL%/}/api/health/orchestration"
-  echo "[deploy-checklist] checking runtime health at $HEALTH_URL"
-  curl -sS "$HEALTH_URL" | tee "$ARTIFACT_DIR/orchestration-health.json" > /dev/null
+  HEALTH_FILE="$ARTIFACT_DIR/orchestration-health.json"
 
-  if ! rg -q '"ok"\s*:\s*true' "$ARTIFACT_DIR/orchestration-health.json"; then
+  echo "[deploy-checklist] checking runtime health at $HEALTH_URL"
+  status_code=$(curl -sS -o "$HEALTH_FILE" -w "%{http_code}" "$HEALTH_URL" || true)
+
+  if [[ "$status_code" == "000" ]]; then
+    echo "[deploy-checklist] health check failed: could not connect to $HEALTH_URL"
+    exit 1
+  fi
+
+  if [[ "$status_code" != "200" ]]; then
+    echo "[deploy-checklist] health check returned HTTP $status_code (expected 200)"
+    cat "$HEALTH_FILE" || true
+    exit 1
+  fi
+
+  if ! grep -Eq '"ok"[[:space:]]*:[[:space:]]*true' "$HEALTH_FILE"; then
     echo "[deploy-checklist] health check did not return ok=true"
-    cat "$ARTIFACT_DIR/orchestration-health.json"
+    cat "$HEALTH_FILE"
     exit 1
   fi
 
