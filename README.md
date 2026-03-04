@@ -5,6 +5,7 @@ Comment Copilot is a standalone web app for TikTok and Instagram creators to man
 ## Hard isolation from SwapSafe
 
 This project is intentionally isolated:
+
 - Separate codebase and dependency graph.
 - Separate auth, infra, secrets, and runtime.
 - Separate data model and audit logs.
@@ -19,7 +20,7 @@ This project is intentionally isolated:
 
 ## Key product features
 
-- Unified comment inbox.
+- Unified comment inbox from the daily Tiktok/IG comments.
 - Hybrid autopilot (auto-send only low-risk/high-confidence replies).
 - Owner-controlled persona configuration.
 - Generated and approved account-level `SKILL.md` versions.
@@ -40,6 +41,7 @@ This project is intentionally isolated:
 - Active phase policy and promotion rules: `docs/dev-phase-policy.md`
 - Orchestration modes and cutover guide: `docs/orchestration.md`
 - Active dev boundary (autonomous agent scope): `docs/dev-phase-ops-hardening.md`
+- Production deploy checklist: `docs/ops/production-deploy-checklist.md`
 - Stage 2 boundary (beta readiness): `docs/dev-phase-stage-2-beta-readiness.md`
 - Stage 3 boundary (controlled beta): `docs/dev-phase-stage-3-controlled-beta.md`
 - Stage 4 boundary (scale launch): `docs/dev-phase-stage-4-scale-launch.md`
