@@ -13,7 +13,7 @@
     "test:inbox": "vitest run tests/inbox.actions.integration.test.ts tests/reviews.cleanup.integration.test.ts tests/audit-retention.integration.test.ts tests/drafts.routing.integration.test.ts tests/temporal.start.integration.test.ts tests/comment-workflow.integration.test.ts tests/context.build.integration.test.ts tests/orchestration-mode.integration.test.ts tests/orchestration.health.integration.test.ts tests/orchestration-runtime.integration.test.ts",
     "test:oauth": "vitest run tests/oauth.integration.test.ts",
     "test:oauth:ci": "mkdir -p test-results && vitest run tests/oauth.integration.test.ts --reporter=default --reporter=junit --outputFile.junit=./test-results/oauth.junit.xml",
-    "test:telemetry": "vitest run tests/inbox-send-telemetry-report.integration.test.ts",
+    "test:telemetry": "vitest run tests/inbox-send-telemetry-report.integration.test.ts tests/usage-dashboard.metrics.integration.test.ts tests/settings.health.integration.test.ts",
     "test:webhooks:e2e": "vitest run tests/webhooks.e2e.integration.test.ts",
     "test:webhooks:e2e:ci": "mkdir -p test-results && vitest run tests/webhooks.e2e.integration.test.ts --reporter=default --reporter=junit --outputFile.junit=./test-results/webhooks.e2e.junit.xml"
   },

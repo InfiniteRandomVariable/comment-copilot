@@ -10,6 +10,13 @@ import {
 import { RefreshTokenSubmit } from "../../components/refresh-token-submit";
 import { DisconnectAccessSubmit } from "../../components/disconnect-access-submit";
 import { SaveAutopilotSubmit } from "../../components/save-autopilot-submit";
+import {
+  BillingUsageSummary,
+  healthColor,
+  resolveConnectionHealth,
+  resolveTokenHealth,
+  resolveUsageHealth
+} from "./health";
 
 type Platform = "instagram" | "tiktok";
 
@@ -130,6 +137,7 @@ export default async function SettingsPage({
     account: OwnerAccount;
     credential: SocialCredential | null;
     autopilotSettings: AutopilotSettings;
+    usageSummary: BillingUsageSummary | null;
   }> = [];
 
   if (userId) {
@@ -146,16 +154,19 @@ export default async function SettingsPage({
 
       connectedData = await Promise.all(
         ownerAccounts.map(async (account) => {
-          const [credential, autopilotSettings] = await Promise.all([
+          const [credential, autopilotSettings, usageSummary] = await Promise.all([
             client.query("socialAccounts:getByAccountId" as never, {
               accountId: account._id
             } as never) as Promise<SocialCredential | null>,
             client.query("autopilot:getAutopilotSettings" as never, {
               accountId: account._id
-            } as never) as Promise<AutopilotSettings>
+            } as never) as Promise<AutopilotSettings>,
+            client.query("billing:getUsageSummary" as never, {
+              accountId: account._id
+            } as never) as Promise<BillingUsageSummary>
           ]);
 
-          return { account, credential, autopilotSettings };
+          return { account, credential, autopilotSettings, usageSummary };
         })
       );
     }
@@ -303,7 +314,12 @@ export default async function SettingsPage({
           </p>
         ) : (
           <div className="grid" style={{ gap: 10 }}>
-            {connectedData.map(({ account, credential, autopilotSettings }) => (
+            {connectedData.map(({ account, credential, autopilotSettings, usageSummary }) => {
+              const connectionHealth = resolveConnectionHealth(Boolean(credential));
+              const tokenHealth = resolveTokenHealth(credential?.tokenExpiresAt);
+              const usageHealth = resolveUsageHealth(usageSummary);
+
+              return (
               <article
                 key={account._id}
                 style={{
@@ -320,6 +336,18 @@ export default async function SettingsPage({
                 </div>
                 <div style={{ fontSize: 13, color: "#59636e", marginTop: 4 }}>
                   token expiry: {formatExpiry(credential?.tokenExpiresAt)}
+                </div>
+                <div style={{ marginTop: 8, display: "grid", gap: 4 }}>
+                  <div style={{ fontSize: 13, color: healthColor(connectionHealth.level) }}>
+                    Connection: <strong>{connectionHealth.label}</strong>
+                  </div>
+                  <div style={{ fontSize: 13, color: healthColor(tokenHealth.level) }}>
+                    Token health: <strong>{tokenHealth.label}</strong>
+                  </div>
+                  <div style={{ fontSize: 13, color: healthColor(usageHealth.level) }}>
+                    Usage health: <strong>{usageHealth.label}</strong>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#59636e" }}>{usageHealth.detail}</div>
                 </div>
 
                 <form
@@ -423,7 +451,8 @@ export default async function SettingsPage({
                   </div>
                 )}
               </article>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

@@ -109,9 +109,9 @@ Stage 2 exits only when all are true:
 
 - Stage Status: In Progress
 - Item 1 (operator UX): In Progress | Tests Passed: Yes | Evidence Linked: Yes | Owner Signoff: No
-- Item 2 (inbox productivity): In Progress | Tests Passed: Yes | Evidence Linked: Yes | Owner Signoff: No
-- Item 3 (usage dashboards): Pending | Tests Passed: No | Evidence Linked: No | Owner Signoff: No
-- Item 4 (customer-facing health): Pending | Tests Passed: No | Evidence Linked: No | Owner Signoff: No
+- Item 2 (inbox productivity): Done | Tests Passed: Yes | Evidence Linked: Yes | Owner Signoff: Yes
+- Item 3 (usage dashboards): In Progress | Tests Passed: Yes | Evidence Linked: Yes | Owner Signoff: No
+- Item 4 (customer-facing health): In Progress | Tests Passed: Yes | Evidence Linked: Yes | Owner Signoff: No
 
 ## Deferred Work
 
