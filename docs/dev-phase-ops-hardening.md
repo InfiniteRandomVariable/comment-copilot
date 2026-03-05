@@ -42,7 +42,7 @@ All autonomous coding-agent work must stay within this boundary.
 - Any request outside this phase must be rejected/deferred and logged under "Deferred Work".
 - No task outside Stage 1 is allowed until all mandatory Stage 1 tests pass and evidence is recorded.
 - Follow the global Execution Continuity rule in `docs/dev-phase-policy.md`.
-- Ship in small, reviewable PR-sized increments.
+- Follow the global git worktree/PR policy in `docs/dev-phase-policy.md`.
 - Every increment must include:
   - docs updates,
   - validation evidence (tests/checks),

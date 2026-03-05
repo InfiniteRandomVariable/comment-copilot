@@ -116,3 +116,4 @@ Stage 2 exits only when all are true:
 ## Deferred Work
 
 Capture out-of-bound requests here for later phases.
+- 2026-03-05: Updated global git worktree/PR policy wording per owner request (process policy change outside Stage 2 product scope).

@@ -23,7 +23,7 @@ ACTIVE_STAGE_ID=stage-2
 ACTIVE_BOUNDARY_DOC=docs/dev-phase-stage-2-beta-readiness.md
 ACTIVE_EVIDENCE_DOC=docs/ops/stage-2-evidence.md
 STAGE_SEQUENCE=stage-1,stage-2,stage-3,stage-4
-LAST_UPDATED=2026-03-04
+LAST_UPDATED=2026-03-05
 
 ## Transition Rules
 
@@ -43,6 +43,32 @@ LAST_UPDATED=2026-03-04
   3. There is a genuine architectural fork with materially different tradeoffs.
   4. You are blocked by missing information.
 - Otherwise, make reasonable decisions and continue.
+
+## Git Worktree And PR Policy
+
+Use git worktree only when there is a strong reason, such as a major feature, major milestone, long-running task, or parallel
+  work that must stay isolated.
+
+Rules:
+- Do not create a worktree by default.
+- Do not create a worktree for small changes, minor fixes, or short tasks.
+- Use the current workspace unless isolation is clearly needed.
+- Create a worktree only when:
+  1. the task is a major feature or milestone,
+  2. the work will be long-running,
+  3. parallel isolated work is necessary,
+  4. keeping the main workspace clean is important.
+- Never open PRs for incremental progress.
+- Never use PRs as status updates.
+- Commit and push freely as internal checkpoints.
+- Open one PR only when:
+  1. the stage goal is complete,
+  2. build/typecheck/tests pass,
+  3. the branch is merge-ready.
+- Prefer squash merge.
+- Interrupt the human only for critical decisions:
+  auth/permissions, payments, DB migrations, infra/deploy,
+  secrets, destructive actions, or major architecture forks.
 
 ## Baseline Mandatory Tests (All Stages)
 
