@@ -58,6 +58,30 @@ function formatPercent(value?: number) {
   return `${Math.round(value * 100)}%`;
 }
 
+function formatAgeMinutes(totalMinutes?: number) {
+  if (typeof totalMinutes !== "number") {
+    return "-";
+  }
+
+  if (totalMinutes < 60) {
+    return `${totalMinutes}m`;
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours < 24) {
+    return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+  }
+
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  return remHours === 0 ? `${days}d` : `${days}d ${remHours}h`;
+}
+
+function computeAgeMinutes(createdAt: number) {
+  return Math.max(0, Math.floor((Date.now() - createdAt) / 60000));
+}
+
 function parseContextSummary(contextSnapshotJson?: string) {
   if (!contextSnapshotJson) {
     return "No context snapshot available.";
@@ -367,6 +391,9 @@ export default async function InboxPage({
             <div style={{ marginTop: 4, fontSize: 13, color: "#59636e" }}>
               IG {queueSummary.byPlatform.instagram} | TikTok {queueSummary.byPlatform.tiktok}
             </div>
+            <div style={{ marginTop: 4, fontSize: 13, color: "#59636e" }}>
+              Oldest: {formatAgeMinutes(queueSummary.queueAge.oldestAgeMinutes)} | stale 1h+: {queueSummary.queueAge.staleOver1hCount} | stale 6h+: {queueSummary.queueAge.staleOver6hCount}
+            </div>
             {topIntentSummary.length > 0 ? (
               <div style={{ marginTop: 4, fontSize: 13, color: "#59636e" }}>
                 Top intents: {topIntentSummary
@@ -427,7 +454,7 @@ export default async function InboxPage({
                       {formatPercent(item.candidate.intentConfidence)})
                     </div>
                     <div style={{ fontSize: 12, color: "#59636e" }}>
-                      {formatTimestamp(item.candidate.createdAt)}
+                      {formatTimestamp(item.candidate.createdAt)} | age {formatAgeMinutes(computeAgeMinutes(item.candidate.createdAt))}
                     </div>
                   </div>
                   <div style={{ fontSize: 12, color: "#59636e" }}>

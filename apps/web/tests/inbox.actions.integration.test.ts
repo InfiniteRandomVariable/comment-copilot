@@ -948,12 +948,14 @@ describe("Inbox Send Candidate Action idempotency", () => {
 
 
 describe("Inbox filtering helpers", () => {
+  const nowTs = 1_700_000_000_000;
   const sampleItems = [
     {
       candidate: {
         text: "Thanks for asking about shipping windows",
         intentLabel: "question",
-        messageId: "msg_1"
+        messageId: "msg_1",
+        createdAt: nowTs - 20 * 60 * 1000
       },
       comment: {
         text: "When will this ship?",
@@ -966,7 +968,8 @@ describe("Inbox filtering helpers", () => {
       candidate: {
         text: "Appreciate your support",
         intentLabel: "praise",
-        messageId: "msg_2"
+        messageId: "msg_2",
+        createdAt: nowTs - 80 * 60 * 1000
       },
       comment: {
         text: "Love this drop",
@@ -979,7 +982,8 @@ describe("Inbox filtering helpers", () => {
       candidate: {
         text: "Could this fit my setup?",
         intentLabel: "question",
-        messageId: "msg_3"
+        messageId: "msg_3",
+        createdAt: nowTs - 500 * 60 * 1000
       },
       comment: {
         text: "Need sizing help",
@@ -1016,8 +1020,8 @@ describe("Inbox filtering helpers", () => {
     assert.equal(filtered[0]?.comment.platformCommentId, "ig_comment_1");
   });
 
-  it("summarizes queue counts for platform and intent clarity", () => {
-    const summary = summarizeInboxQueue(sampleItems);
+  it("summarizes queue counts and staleness for triage clarity", () => {
+    const summary = summarizeInboxQueue(sampleItems, nowTs);
 
     assert.equal(summary.total, 3);
     assert.deepEqual(summary.byPlatform, {
@@ -1027,6 +1031,11 @@ describe("Inbox filtering helpers", () => {
     assert.deepEqual(summary.byIntent[0], {
       intent: "question",
       count: 2
+    });
+    assert.deepEqual(summary.queueAge, {
+      oldestAgeMinutes: 500,
+      staleOver1hCount: 2,
+      staleOver6hCount: 1
     });
   });
 });

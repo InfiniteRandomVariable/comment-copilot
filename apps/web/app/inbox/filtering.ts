@@ -40,6 +40,7 @@ export type FilterableInboxItem = {
     text: string;
     intentLabel?: string;
     messageId?: string;
+    createdAt?: number;
   };
   comment: {
     text: string;
@@ -47,6 +48,20 @@ export type FilterableInboxItem = {
     platformCommentId: string;
     commenterUsername?: string;
     sourceVideoTitle?: string;
+  };
+};
+
+export type InboxQueueSummary = {
+  total: number;
+  byPlatform: {
+    instagram: number;
+    tiktok: number;
+  };
+  byIntent: Array<{ intent: InboxIntent; count: number }>;
+  queueAge: {
+    oldestAgeMinutes?: number;
+    staleOver1hCount: number;
+    staleOver6hCount: number;
   };
 };
 
@@ -79,6 +94,14 @@ function resolveIntent(item: FilterableInboxItem): InboxIntent {
   return INBOX_INTENT_FILTER_OPTIONS.includes(raw as IntentFilter)
     ? ((raw as InboxIntent) ?? "unknown")
     : "unknown";
+}
+
+function resolveAgeMinutes(item: FilterableInboxItem, nowTs: number) {
+  if (typeof item.candidate.createdAt !== "number" || !Number.isFinite(item.candidate.createdAt)) {
+    return undefined;
+  }
+
+  return Math.max(0, Math.floor((nowTs - item.candidate.createdAt) / 60000));
 }
 
 function matchesSearch(item: FilterableInboxItem, q: string) {
@@ -117,17 +140,36 @@ export function filterInboxItems<T extends FilterableInboxItem>(
   });
 }
 
-export function summarizeInboxQueue(items: FilterableInboxItem[]) {
+export function summarizeInboxQueue(
+  items: FilterableInboxItem[],
+  nowTs = Date.now()
+): InboxQueueSummary {
   const byPlatform = {
     instagram: 0,
     tiktok: 0
   };
   const byIntentCount = new Map<InboxIntent, number>();
+  let oldestAgeMinutes: number | undefined;
+  let staleOver1hCount = 0;
+  let staleOver6hCount = 0;
 
   for (const item of items) {
     byPlatform[item.comment.platform] += 1;
     const intent = resolveIntent(item);
     byIntentCount.set(intent, (byIntentCount.get(intent) ?? 0) + 1);
+
+    const ageMinutes = resolveAgeMinutes(item, nowTs);
+    if (typeof ageMinutes === "number") {
+      if (typeof oldestAgeMinutes !== "number" || ageMinutes > oldestAgeMinutes) {
+        oldestAgeMinutes = ageMinutes;
+      }
+      if (ageMinutes >= 60) {
+        staleOver1hCount += 1;
+      }
+      if (ageMinutes >= 360) {
+        staleOver6hCount += 1;
+      }
+    }
   }
 
   const byIntent = Array.from(byIntentCount.entries())
@@ -142,6 +184,11 @@ export function summarizeInboxQueue(items: FilterableInboxItem[]) {
   return {
     total: items.length,
     byPlatform,
-    byIntent
+    byIntent,
+    queueAge: {
+      oldestAgeMinutes,
+      staleOver1hCount,
+      staleOver6hCount
+    }
   };
 }
