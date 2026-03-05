@@ -53,6 +53,7 @@ function buildInboxRedirectUrl(args: {
   history?: string;
   platform?: string;
   intent?: string;
+  ageBand?: string;
   q?: string;
   result?: string;
   error?: string;
@@ -73,6 +74,10 @@ function buildInboxRedirectUrl(args: {
 
   if (args.intent) {
     params.set("intent", args.intent);
+  }
+
+  if (args.ageBand) {
+    params.set("ageBand", args.ageBand);
   }
 
   if (args.q) {
@@ -362,6 +367,7 @@ export async function approveCandidateAction(formData: FormData) {
   const history = getOptionalValue(formData, "history");
   const platform = getOptionalValue(formData, "platform");
   const intent = getOptionalValue(formData, "intent");
+  const ageBand = getOptionalValue(formData, "ageBand");
   const q = getOptionalValue(formData, "q");
   let result: string | undefined;
   let errorMessage: string | undefined;
@@ -446,6 +452,7 @@ export async function approveCandidateAction(formData: FormData) {
       history,
       platform,
       intent,
+      ageBand,
       q,
       result,
       error: errorMessage
@@ -459,6 +466,7 @@ export async function sendCandidateAction(formData: FormData) {
   const history = getOptionalValue(formData, "history");
   const platform = getOptionalValue(formData, "platform");
   const intent = getOptionalValue(formData, "intent");
+  const ageBand = getOptionalValue(formData, "ageBand");
   const q = getOptionalValue(formData, "q");
   let result: string | undefined;
   let errorMessage: string | undefined;
@@ -565,6 +573,7 @@ export async function sendCandidateAction(formData: FormData) {
       history,
       platform,
       intent,
+      ageBand,
       q,
       result,
       error: errorMessage
@@ -578,6 +587,7 @@ export async function rejectCandidateAction(formData: FormData) {
   const history = getOptionalValue(formData, "history");
   const platform = getOptionalValue(formData, "platform");
   const intent = getOptionalValue(formData, "intent");
+  const ageBand = getOptionalValue(formData, "ageBand");
   const q = getOptionalValue(formData, "q");
   let result: string | undefined;
   let errorMessage: string | undefined;
@@ -607,6 +617,7 @@ export async function rejectCandidateAction(formData: FormData) {
       history,
       platform,
       intent,
+      ageBand,
       q,
       result,
       error: errorMessage

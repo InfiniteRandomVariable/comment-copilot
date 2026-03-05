@@ -3,6 +3,7 @@ import { getConvexServerClient } from "../api/_lib/convexServer";
 import Link from "next/link";
 import {
   filterInboxItems,
+  INBOX_AGE_BAND_FILTER_OPTIONS,
   INBOX_INTENT_FILTER_OPTIONS,
   INBOX_PLATFORM_FILTER_OPTIONS,
   normalizeInboxFilters,
@@ -132,6 +133,7 @@ function buildInboxHref(args: {
   history?: string;
   platform: string;
   intent: string;
+  ageBand: string;
   q: string;
 }) {
   const params = new URLSearchParams({ accountId: args.accountId });
@@ -140,6 +142,7 @@ function buildInboxHref(args: {
   if (args.history) params.set("history", args.history);
   if (args.platform && args.platform !== "all") params.set("platform", args.platform);
   if (args.intent && args.intent !== "all") params.set("intent", args.intent);
+  if (args.ageBand && args.ageBand !== "all") params.set("ageBand", args.ageBand);
   if (args.q) params.set("q", args.q);
 
   return `/inbox?${params.toString()}`;
@@ -156,6 +159,7 @@ export default async function InboxPage({
     error?: string;
     platform?: string;
     intent?: string;
+    ageBand?: string;
     q?: string;
   }>;
 }) {
@@ -164,10 +168,14 @@ export default async function InboxPage({
   const filters = normalizeInboxFilters({
     platform: params.platform,
     intent: params.intent,
+    ageBand: params.ageBand,
     q: params.q
   });
   const hasActiveFilters =
-    filters.platform !== "all" || filters.intent !== "all" || filters.q.length > 0;
+    filters.platform !== "all" ||
+    filters.intent !== "all" ||
+    filters.ageBand !== "all" ||
+    filters.q.length > 0;
 
   const parsedCursor = Number(cursor ?? "");
   const beforeCreationTime =
@@ -310,6 +318,32 @@ export default async function InboxPage({
 
             <label style={{ display: "grid", gap: 4 }}>
               <span className="label" style={{ letterSpacing: 0, textTransform: "none" }}>
+                Backlog age
+              </span>
+              <select
+                name="ageBand"
+                defaultValue={filters.ageBand}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #d8dedf",
+                  fontSize: 14
+                }}
+              >
+                {INBOX_AGE_BAND_FILTER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option === "all"
+                      ? "Any age"
+                      : option === "stale_1h"
+                        ? "Stale 1h+"
+                        : "Stale 6h+"}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label style={{ display: "grid", gap: 4 }}>
+              <span className="label" style={{ letterSpacing: 0, textTransform: "none" }}>
                 Search
               </span>
               <input
@@ -348,7 +382,7 @@ export default async function InboxPage({
         {hasActiveFilters ? (
           <p style={{ marginTop: 12, color: "#59636e" }}>
             Active filters: platform=<strong>{filters.platform}</strong>, intent=
-            <strong>{filters.intent}</strong>, search=<strong>{filters.q || "(none)"}</strong>
+            <strong>{filters.intent}</strong>, age=<strong>{filters.ageBand}</strong>, search=<strong>{filters.q || "(none)"}</strong>
           </p>
         ) : null}
 
@@ -508,6 +542,7 @@ export default async function InboxPage({
                       <input type="hidden" name="history" value={historyTokens.join(",")} />
                       <input type="hidden" name="platform" value={filters.platform} />
                       <input type="hidden" name="intent" value={filters.intent} />
+                      <input type="hidden" name="ageBand" value={filters.ageBand} />
                       <input type="hidden" name="q" value={filters.q} />
                       <input type="hidden" name="ownerUserId" value={account.ownerUserId} />
                       <input type="hidden" name="candidateId" value={item.candidate._id} />
@@ -526,6 +561,7 @@ export default async function InboxPage({
                       <input type="hidden" name="history" value={historyTokens.join(",")} />
                       <input type="hidden" name="platform" value={filters.platform} />
                       <input type="hidden" name="intent" value={filters.intent} />
+                      <input type="hidden" name="ageBand" value={filters.ageBand} />
                       <input type="hidden" name="q" value={filters.q} />
                       <input type="hidden" name="ownerUserId" value={account.ownerUserId} />
                       <input type="hidden" name="candidateId" value={item.candidate._id} />
@@ -562,6 +598,7 @@ export default async function InboxPage({
                       <input type="hidden" name="history" value={historyTokens.join(",")} />
                       <input type="hidden" name="platform" value={filters.platform} />
                       <input type="hidden" name="intent" value={filters.intent} />
+                      <input type="hidden" name="ageBand" value={filters.ageBand} />
                       <input type="hidden" name="q" value={filters.q} />
                       <input type="hidden" name="ownerUserId" value={account.ownerUserId} />
                       <input type="hidden" name="candidateId" value={item.candidate._id} />
@@ -597,6 +634,7 @@ export default async function InboxPage({
                       history: previousHistoryParam || undefined,
                       platform: filters.platform,
                       intent: filters.intent,
+                      ageBand: filters.ageBand,
                       q: filters.q
                     })
                   : buildInboxHref({
@@ -605,6 +643,7 @@ export default async function InboxPage({
                       history: previousHistoryParam || undefined,
                       platform: filters.platform,
                       intent: filters.intent,
+                      ageBand: filters.ageBand,
                       q: filters.q
                     })
               }
@@ -625,7 +664,8 @@ export default async function InboxPage({
                 history: nextHistoryParam,
                 platform: filters.platform,
                 intent: filters.intent,
-                q: filters.q
+                      ageBand: filters.ageBand,
+                      q: filters.q
               })}
               className="btn"
             >

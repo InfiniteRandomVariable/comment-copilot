@@ -11,6 +11,7 @@ export type InboxIntent =
 
 export type PlatformFilter = "all" | InboxPlatform;
 export type IntentFilter = "all" | InboxIntent;
+export type AgeBandFilter = "all" | "stale_1h" | "stale_6h";
 
 export const INBOX_PLATFORM_FILTER_OPTIONS: PlatformFilter[] = [
   "all",
@@ -29,9 +30,16 @@ export const INBOX_INTENT_FILTER_OPTIONS: IntentFilter[] = [
   "unknown"
 ];
 
+export const INBOX_AGE_BAND_FILTER_OPTIONS: AgeBandFilter[] = [
+  "all",
+  "stale_1h",
+  "stale_6h"
+];
+
 export type InboxFilters = {
   platform: PlatformFilter;
   intent: IntentFilter;
+  ageBand: AgeBandFilter;
   q: string;
 };
 
@@ -77,14 +85,22 @@ function normalizeIntentFilter(value?: string): IntentFilter {
     : "all";
 }
 
+function normalizeAgeBandFilter(value?: string): AgeBandFilter {
+  return INBOX_AGE_BAND_FILTER_OPTIONS.includes(value as AgeBandFilter)
+    ? (value as AgeBandFilter)
+    : "all";
+}
+
 export function normalizeInboxFilters(args: {
   platform?: string;
   intent?: string;
+  ageBand?: string;
   q?: string;
 }): InboxFilters {
   return {
     platform: normalizePlatformFilter(args.platform),
     intent: normalizeIntentFilter(args.intent),
+    ageBand: normalizeAgeBandFilter(args.ageBand),
     q: (args.q ?? "").trim()
   };
 }
@@ -97,7 +113,10 @@ function resolveIntent(item: FilterableInboxItem): InboxIntent {
 }
 
 function resolveAgeMinutes(item: FilterableInboxItem, nowTs: number) {
-  if (typeof item.candidate.createdAt !== "number" || !Number.isFinite(item.candidate.createdAt)) {
+  if (
+    typeof item.candidate.createdAt !== "number" ||
+    !Number.isFinite(item.candidate.createdAt)
+  ) {
     return undefined;
   }
 
@@ -122,9 +141,27 @@ function matchesSearch(item: FilterableInboxItem, q: string) {
   return fields.some((value) => value.includes(query));
 }
 
+function matchesAgeBand(item: FilterableInboxItem, ageBand: AgeBandFilter, nowTs: number) {
+  if (ageBand === "all") {
+    return true;
+  }
+
+  const ageMinutes = resolveAgeMinutes(item, nowTs);
+  if (typeof ageMinutes !== "number") {
+    return false;
+  }
+
+  if (ageBand === "stale_6h") {
+    return ageMinutes >= 360;
+  }
+
+  return ageMinutes >= 60;
+}
+
 export function filterInboxItems<T extends FilterableInboxItem>(
   items: T[],
-  filters: InboxFilters
+  filters: InboxFilters,
+  nowTs = Date.now()
 ): T[] {
   return items.filter((item) => {
     if (filters.platform !== "all" && item.comment.platform !== filters.platform) {
@@ -133,6 +170,10 @@ export function filterInboxItems<T extends FilterableInboxItem>(
 
     const intent = resolveIntent(item);
     if (filters.intent !== "all" && intent !== filters.intent) {
+      return false;
+    }
+
+    if (!matchesAgeBand(item, filters.ageBand, nowTs)) {
       return false;
     }
 

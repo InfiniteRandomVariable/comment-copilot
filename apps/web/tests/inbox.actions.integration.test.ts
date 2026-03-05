@@ -948,6 +948,7 @@ describe("Inbox Send Candidate Action idempotency", () => {
           history: "root,1700000100000",
           platform: "instagram",
           intent: "question",
+          ageBand: "stale_1h",
           q: "shipping"
         })
       ),
@@ -960,6 +961,7 @@ describe("Inbox Send Candidate Action idempotency", () => {
     assert.equal(redirectUrl.searchParams.get("history"), "root,1700000100000");
     assert.equal(redirectUrl.searchParams.get("platform"), "instagram");
     assert.equal(redirectUrl.searchParams.get("intent"), "question");
+    assert.equal(redirectUrl.searchParams.get("ageBand"), "stale_1h");
     assert.equal(redirectUrl.searchParams.get("q"), "shipping");
   });
 
@@ -974,6 +976,7 @@ describe("Inbox Send Candidate Action idempotency", () => {
           history: "root,1700000100000",
           platform: "tiktok",
           intent: "praise",
+          ageBand: "stale_6h",
           q: "drop"
         })
       ),
@@ -986,6 +989,7 @@ describe("Inbox Send Candidate Action idempotency", () => {
     assert.equal(redirectUrl.searchParams.get("history"), "root,1700000100000");
     assert.equal(redirectUrl.searchParams.get("platform"), "tiktok");
     assert.equal(redirectUrl.searchParams.get("intent"), "praise");
+    assert.equal(redirectUrl.searchParams.get("ageBand"), "stale_6h");
     assert.equal(redirectUrl.searchParams.get("q"), "drop");
   });
 
@@ -1064,8 +1068,26 @@ describe("Inbox filtering helpers", () => {
     assert.deepEqual(filters, {
       platform: "all",
       intent: "all",
+      ageBand: "all",
       q: "shipping"
     });
+  });
+
+  it("filters by backlog age band", () => {
+    const staleOneHour = filterInboxItems(
+      sampleItems,
+      normalizeInboxFilters({ ageBand: "stale_1h" }),
+      nowTs
+    );
+    assert.equal(staleOneHour.length, 2);
+
+    const staleSixHour = filterInboxItems(
+      sampleItems,
+      normalizeInboxFilters({ ageBand: "stale_6h" }),
+      nowTs
+    );
+    assert.equal(staleSixHour.length, 1);
+    assert.equal(staleSixHour[0]?.comment.platformCommentId, "ig_comment_3");
   });
 
   it("filters by platform, intent, and search query", () => {
