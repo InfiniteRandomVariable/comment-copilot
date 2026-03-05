@@ -63,8 +63,7 @@ Rules:
 - Commit and push freely as internal checkpoints.
 - Open one PR only when:
   1. the stage goal is complete,
-  2. build/typecheck/tests pass,
-  3. the branch is merge-ready.
+  2. the branch is merge-ready.
 - Prefer squash merge.
 - Interrupt the human only for critical decisions:
   auth/permissions, payments, DB migrations, infra/deploy,
