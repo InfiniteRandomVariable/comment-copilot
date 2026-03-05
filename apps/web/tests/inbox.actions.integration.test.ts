@@ -929,6 +929,66 @@ describe("Inbox Send Candidate Action idempotency", () => {
     );
   });
 
+  it("preserves queue context params in approve redirect", async () => {
+    const { client } = createMockClient({
+      query: async (fn) => {
+        if (fn === "reviews:getCandidateSendContext") return defaultSendContext;
+        if (fn === "reviews:getPlatformSendReceipt") {
+          return { platformReplyId: "platform_reply_existing" };
+        }
+        return null;
+      }
+    });
+    hoisted.client = client as never;
+
+    await assert.rejects(
+      approveCandidateAction(
+        createApproveForm({
+          cursor: "1700000000000",
+          history: "root,1700000100000",
+          platform: "instagram",
+          intent: "question",
+          q: "shipping"
+        })
+      ),
+      /__REDIRECT__/
+    );
+
+    const redirectUrl = parseRedirectUrl(hoisted.lastRedirectUrl);
+    assert.equal(redirectUrl.searchParams.get("result"), "approved");
+    assert.equal(redirectUrl.searchParams.get("cursor"), "1700000000000");
+    assert.equal(redirectUrl.searchParams.get("history"), "root,1700000100000");
+    assert.equal(redirectUrl.searchParams.get("platform"), "instagram");
+    assert.equal(redirectUrl.searchParams.get("intent"), "question");
+    assert.equal(redirectUrl.searchParams.get("q"), "shipping");
+  });
+
+  it("preserves queue context params in reject redirect", async () => {
+    const { client } = createMockClient({});
+    hoisted.client = client as never;
+
+    await assert.rejects(
+      rejectCandidateAction(
+        createRejectForm({
+          cursor: "1700000000000",
+          history: "root,1700000100000",
+          platform: "tiktok",
+          intent: "praise",
+          q: "drop"
+        })
+      ),
+      /__REDIRECT__/
+    );
+
+    const redirectUrl = parseRedirectUrl(hoisted.lastRedirectUrl);
+    assert.equal(redirectUrl.searchParams.get("result"), "rejected");
+    assert.equal(redirectUrl.searchParams.get("cursor"), "1700000000000");
+    assert.equal(redirectUrl.searchParams.get("history"), "root,1700000100000");
+    assert.equal(redirectUrl.searchParams.get("platform"), "tiktok");
+    assert.equal(redirectUrl.searchParams.get("intent"), "praise");
+    assert.equal(redirectUrl.searchParams.get("q"), "drop");
+  });
+
   it("calls reject mutation for reject flow", async () => {
     const { client, mutationCalls } = createMockClient({});
     hoisted.client = client as never;

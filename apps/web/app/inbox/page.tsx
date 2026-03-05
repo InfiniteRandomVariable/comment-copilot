@@ -1,4 +1,4 @@
-import { sendCandidateAction, rejectCandidateAction } from "./actions";
+import { approveCandidateAction, sendCandidateAction, rejectCandidateAction } from "./actions";
 import { getConvexServerClient } from "../api/_lib/convexServer";
 import Link from "next/link";
 import {
@@ -497,6 +497,24 @@ export default async function InboxPage({
                         {item.comment.text}
                       </div>
                     </div>
+
+                    <form action={approveCandidateAction}>
+                      <input type="hidden" name="accountId" value={account._id} />
+                      <input
+                        type="hidden"
+                        name="cursor"
+                        value={beforeCreationTime ? String(beforeCreationTime) : ""}
+                      />
+                      <input type="hidden" name="history" value={historyTokens.join(",")} />
+                      <input type="hidden" name="platform" value={filters.platform} />
+                      <input type="hidden" name="intent" value={filters.intent} />
+                      <input type="hidden" name="q" value={filters.q} />
+                      <input type="hidden" name="ownerUserId" value={account.ownerUserId} />
+                      <input type="hidden" name="candidateId" value={item.candidate._id} />
+                      <button className="btn secondary" type="submit">
+                        Quick approve + send
+                      </button>
+                    </form>
 
                     <form action={sendCandidateAction} className="grid" style={{ gap: 8 }}>
                       <input type="hidden" name="accountId" value={account._id} />
