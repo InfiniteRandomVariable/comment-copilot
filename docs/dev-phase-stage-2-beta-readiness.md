@@ -116,4 +116,5 @@ Stage 2 exits only when all are true:
 ## Deferred Work
 
 Capture out-of-bound requests here for later phases.
+- 2026-03-05: Added repository-wide agent coding guidelines and local skill scaffolding (`AGENTS.md`, `docs/agent-coding-guidelines.md`, `.skills/app-dev-coding-guide/`) as process/workflow governance outside Stage 2 product scope.
 - 2026-03-05: Updated global git worktree/PR policy wording per owner request (process policy change outside Stage 2 product scope).
